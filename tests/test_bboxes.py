@@ -6,6 +6,7 @@ import torch
 
 from ssd.dataset.bboxes import (
     area,
+    assign_priors,
     center_bbox_to_corner_bbox,
     convert_boxes_to_locations,
     convert_locations_to_boxes,
@@ -195,3 +196,18 @@ def test_iou(boxes_1, boxes_2, expected_iou):
     assert (
         torch.round(100 * iou(boxes_1, boxes_2)) == torch.round(100 * expected_iou)
     ).all()
+
+
+def test_prior_assigning():
+    """Test assigning bboxes to prior."""
+    gt_boxes = torch.tensor([[1, 3, 7, 7], [0, 0, 12, 12]])
+    gt_labels = torch.tensor([1, 2])
+    corner_form_priors = torch.tensor([[0, 0, 10, 10], [3, 3, 7, 7]])
+    iou_threshold = 0.1
+    boxes, labels = assign_priors(
+        gt_boxes, gt_labels, corner_form_priors, iou_threshold
+    )
+    assert (boxes[0] == gt_boxes[1]).all()
+    assert (boxes[1] == gt_boxes[0]).all()
+    assert labels[0] == gt_labels[1]
+    assert labels[1] == gt_labels[0]

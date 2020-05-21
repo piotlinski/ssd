@@ -1,4 +1,6 @@
 """SSD bounding box utils."""
+from typing import Tuple
+
 import torch
 
 
@@ -95,3 +97,31 @@ def iou(boxes_1: torch.Tensor, boxes_2: torch.Tensor) -> torch.Tensor:
     union = boxes_1_area + boxes_2_area - intersection
 
     return intersection / (union + 1e-5)
+
+
+def assign_priors(
+    gt_boxes: torch.Tensor,
+    gt_labels: torch.Tensor,
+    corner_form_priors: torch.Tensor,
+    iou_threshold: float,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """ Assign ground truth boxes and targets to priors.
+
+    :param gt_boxes: (num_targets, 4) ground truth boxes
+    :param gt_labels: (num_targets) labels of targets
+    :param corner_form_priors: (num_priors, 4) corner form priors
+    :param iou_threshold: IoU threshold for assigning
+    :return: boxes (num_priors, 4) and labels (num_priors)
+    """
+    ious = iou(gt_boxes.unsqueeze(0), corner_form_priors.unsqueeze(1))
+    best_target_per_prior, tpp_idx = ious.max(1)
+    best_prior_per_target, ppt_idx = ious.max(0)
+
+    for target_idx, prior_idx in enumerate(ppt_idx):
+        best_target_per_prior[prior_idx] = target_idx
+
+    best_target_per_prior.index_fill_(0, ppt_idx, 2)  # 2 -> every target has a prior
+    labels = gt_labels[tpp_idx]
+    labels[best_target_per_prior < iou_threshold] = 0  # background class
+    boxes = gt_boxes[tpp_idx]
+    return boxes, labels
