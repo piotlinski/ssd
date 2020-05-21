@@ -8,6 +8,7 @@ authors = ["PiotrJZielinski <piotrekzie100@gmail.com>"]
 python = "^3.8"
 yacs = "^0.1.7"
 torch = "^1.5.0"
+torchvision = "^0.6.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.1"
