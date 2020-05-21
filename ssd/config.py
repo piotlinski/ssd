@@ -10,6 +10,7 @@ _C = CfgNode()
 # data config
 _C.DATA = CfgNode()
 _C.DATA.CHANNELS = 3
+_C.DATA.N_CLASSES = 10
 
 # model config
 _C.MODEL = CfgNode()
