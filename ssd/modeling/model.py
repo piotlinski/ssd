@@ -1,11 +1,13 @@
 """SSD model."""
-from typing import Iterable, Tuple
+from typing import Iterable, List, Tuple
 
 import torch
 import torch.nn as nn
 from torchvision.ops import nms
 from yacs.config import CfgNode
 
+from ssd.dataset.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
+from ssd.dataset.priors import process_prior
 from ssd.modeling.backbones import backbones
 from ssd.modeling.box_predictors import box_predictors
 
@@ -113,3 +115,40 @@ def process_model_output(
         labels = labels[keep_mask]
 
         yield boxes, scores, labels
+
+
+def process_model_prediction(
+    config: CfgNode, cls_logits: torch.Tensor, bbox_pred: torch.Tensor
+) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+    """ Get readable results from model predictions.
+
+    :param config: SSD configuration
+    :param cls_logits: class predictions from model
+    :param bbox_pred: bounding box predictions from model
+    :return: list of predictions - tuples of boxes, scores and labels
+    """
+    priors = process_prior(
+        image_size=config.DATA.SHAPE,
+        feature_maps=config.DATA.PRIOR.FEATURE_MAPS,
+        min_sizes=config.DATA.PRIOR.MIN_SIZES,
+        max_sizes=config.DATA.PRIOR.MAX_SIZES,
+        strides=config.DATA.PRIOR.STRIDES,
+        aspect_ratios=config.DATA.PRIOR.ASPECT_RATIOS,
+        clip=config.DATA.PRIOR.CLIP,
+    )
+    scores = nn.functional.softmax(cls_logits, dim=2)
+    boxes = convert_locations_to_boxes(
+        locations=bbox_pred,
+        priors=priors,
+        center_variance=config.MODEL.CENTER_VARIANCE,
+        size_variance=config.MODEL.SIZE_VARIANCE,
+    )
+    boxes = center_bbox_to_corner_bbox(boxes)
+    detections = process_model_output(
+        detections=(scores, boxes),
+        image_size=config.DATA.SHAPE[1:],
+        confidence_threshold=config.MODEL.CONFIDENCE_THRESHOLD,
+        nms_threshold=config.MODEL.NMS_THRESHOLD,
+        max_per_image=config.MODEL.MAX_PER_IMAGE,
+    )
+    return list(detections)
