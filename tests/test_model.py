@@ -4,7 +4,7 @@ import torch
 
 from ssd.modeling.backbones import backbones
 from ssd.modeling.box_predictors import box_predictors
-from ssd.modeling.model import SSD, non_max_suppression
+from ssd.modeling.model import SSD, non_max_suppression, process_model_output
 
 
 def test_model_setup(sample_config):
@@ -46,3 +46,20 @@ def test_nms_empty():
     empty = torch.empty(0)
     nms = non_max_suppression(boxes=empty, scores=empty, indices=empty, threshold=0.0)
     assert nms.numel() == 0
+
+
+@pytest.mark.parametrize("n_predictions", [0, 1, 2])
+def test_model_output_processing(n_predictions):
+    """Test processing model output for using it."""
+    cls_logits = torch.rand(n_predictions, 2, 3)
+    bbox_pred = torch.rand(n_predictions, 2, 4)
+    processed = list(
+        process_model_output(
+            detections=(cls_logits, bbox_pred),
+            image_size=(300, 300),
+            confidence_threshold=0.1,
+            nms_threshold=0.5,
+            max_per_image=100,
+        )
+    )
+    assert 0 <= len(processed) <= n_predictions
