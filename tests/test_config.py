@@ -63,3 +63,20 @@ def test_verifying_config_wrong_box_predictor(sample_config):
     sample_config.MODEL.BOX_PREDICTOR = "test"
     with pytest.raises(NameError):
         verify_config(sample_config)
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "BOXES_PER_LOC",
+        "FEATURE_MAPS",
+        "MIN_SIZES",
+        "MAX_SIZES",
+        "STRIDES",
+        "ASPECT_RATIOS",
+    ],
+)
+def test_verifying_config_wrong_prior_config(key, sample_config):
+    sample_config.DATA.PRIOR.update({key: tuple()})
+    with pytest.raises(ValueError):
+        verify_config(sample_config)

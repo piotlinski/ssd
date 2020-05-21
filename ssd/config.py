@@ -13,10 +13,24 @@ _C = CfgNode()
 # data config
 _C.DATA = CfgNode()
 _C.DATA.CHANNELS = 3
+_C.DATA.SHAPE = (300, 300)
 _C.DATA.N_CLASSES = 10
 # data prior config
 _C.DATA.PRIOR = CfgNode()
 _C.DATA.PRIOR.BOXES_PER_LOC = (4, 6, 6, 6, 4, 4)
+_C.DATA.PRIOR.FEATURE_MAPS = (38, 19, 10, 5, 3, 1)
+_C.DATA.PRIOR.MIN_SIZES = (30, 60, 111, 162, 213, 264)
+_C.DATA.PRIOR.MAX_SIZES = (60, 111, 162, 213, 264, 315)
+_C.DATA.PRIOR.STRIDES = (8, 16, 32, 64, 100, 300)
+_C.DATA.PRIOR.ASPECT_RATIOS = (
+    (2,),
+    (2, 3),
+    (2, 3),
+    (2, 3),
+    (2,),
+    (2,),
+)
+_C.DATA.PRIOR.CLIP = True
 
 # model config
 _C.MODEL = CfgNode()
@@ -26,6 +40,11 @@ _C.MODEL.PRETRAINED_URL = (
 )
 _C.MODEL.BACKBONE = "VGG300"
 _C.MODEL.BOX_PREDICTOR = "SSD"
+_C.MODEL.CENTER_VARIANCE = 0.1
+_C.MODEL.SIZE_VARIANCE = 0.2
+_C.MODEL.CONFIDENCE_THRESHOLD = 0.01
+_C.MODEL.NMS_THRESHOLD = 0.45
+_C.MODEL.MAX_PER_IMAGE = 100
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +56,19 @@ def verify_config(config: CfgNode):
         raise NameError("Backbone %s is not available", config.MODEL.BACKBONE)
     if config.MODEL.BOX_PREDICTOR not in box_predictors:
         raise NameError("Box predictor %s is not available", config.MODEL.BOX_PREDICTOR)
+    prior_len = len(config.DATA.PRIOR.BOXES_PER_LOC)
+    if any(
+        len(prior_config_tuple) != prior_len
+        for prior_config_tuple in [
+            config.DATA.PRIOR.BOXES_PER_LOC,
+            config.DATA.PRIOR.FEATURE_MAPS,
+            config.DATA.PRIOR.MIN_SIZES,
+            config.DATA.PRIOR.MAX_SIZES,
+            config.DATA.PRIOR.STRIDES,
+            config.DATA.PRIOR.ASPECT_RATIOS,
+        ]
+    ):
+        raise ValueError("Prior config is incorrect")
 
 
 def get_config(config_file: Optional[Path] = None, **kwargs):
