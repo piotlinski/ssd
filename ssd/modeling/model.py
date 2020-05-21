@@ -6,8 +6,8 @@ import torch.nn as nn
 from torchvision.ops import nms
 from yacs.config import CfgNode
 
-from ssd.dataset.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
-from ssd.dataset.priors import process_prior
+from ssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
+from ssd.data.priors import process_prior
 from ssd.modeling.backbones import backbones
 from ssd.modeling.box_predictors import box_predictors
 
