@@ -14,6 +14,9 @@ _C = CfgNode()
 _C.DATA = CfgNode()
 _C.DATA.CHANNELS = 3
 _C.DATA.N_CLASSES = 10
+# data prior config
+_C.DATA.PRIOR = CfgNode()
+_C.DATA.PRIOR.BOXES_PER_LOC = (4, 6, 6, 6, 4, 4)
 
 # model config
 _C.MODEL = CfgNode()
