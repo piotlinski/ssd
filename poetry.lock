@@ -193,7 +193,7 @@ pytest = ">=3.6"
 testing = ["fields", "hunter", "process-tests (2.0.2)", "six", "virtualenv"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "YAML parser and emitter for Python"
 name = "pyyaml"
 optional = false
@@ -242,8 +242,19 @@ optional = false
 python-versions = "*"
 version = "0.1.9"
 
+[[package]]
+category = "main"
+description = "Yet Another Configuration System"
+name = "yacs"
+optional = false
+python-versions = "*"
+version = "0.1.7"
+
+[package.dependencies]
+PyYAML = "*"
+
 [metadata]
-content-hash = "5adc68fe66eca4c60d171a1b7b1355c39aeef958279cef83293c072bce54d506"
+content-hash = "7ebf487035f4b0e738b8c1c11f5000645b706c7cdc03eae4952b9d0b6405f957"
 python-versions = "^3.8"
 
 [metadata.files]
@@ -375,4 +386,9 @@ virtualenv = [
 wcwidth = [
     {file = "wcwidth-0.1.9-py2.py3-none-any.whl", hash = "sha256:cafe2186b3c009a04067022ce1dcd79cb38d8d65ee4f4791b8888d6599d1bbe1"},
     {file = "wcwidth-0.1.9.tar.gz", hash = "sha256:ee73862862a156bf77ff92b09034fc4825dd3af9cf81bc5b360668d425f3c5f1"},
+]
+yacs = [
+    {file = "yacs-0.1.7-py2-none-any.whl", hash = "sha256:cb601c990dae438d30b2589a15e312a2f8eb86f734dd076d9fc8ffee8098462e"},
+    {file = "yacs-0.1.7-py3-none-any.whl", hash = "sha256:c8e228c7c74298d0dcc820e217dc9a743b757e148a4a7abb9a1d831beb143caf"},
+    {file = "yacs-0.1.7.tar.gz", hash = "sha256:4e47a59c9852b5d9cdc3777587864e9771060340d8f1b92b2c68f45244550c02"},
 ]
