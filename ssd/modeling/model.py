@@ -146,7 +146,7 @@ def process_model_prediction(
     boxes = center_bbox_to_corner_bbox(boxes)
     detections = process_model_output(
         detections=(scores, boxes),
-        image_size=config.DATA.SHAPE[1:],
+        image_size=config.DATA.SHAPE,
         confidence_threshold=config.MODEL.CONFIDENCE_THRESHOLD,
         nms_threshold=config.MODEL.NMS_THRESHOLD,
         max_per_image=config.MODEL.MAX_PER_IMAGE,
