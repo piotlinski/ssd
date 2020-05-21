@@ -3,11 +3,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from more_itertools import first
 
 from ssd.config import get_config, verify_config
-from ssd.modeling.backbones import backbones
-from ssd.modeling.box_predictors import box_predictors
 
 
 def test_default_config():
@@ -44,23 +41,26 @@ def test_updating_with_kwargs():
 
 def test_verifying_config_correct(sample_config):
     """Test if passing correct parameters does not raise any error."""
-    sample_config.MODEL.BACKBONE = first(backbones.keys())
-    sample_config.MODEL.BOX_PREDICTOR = first(box_predictors.keys())
     verify_config(sample_config)
 
 
 def test_verifying_config_wrong_backbone(sample_config):
     """Test if passing incorrect backbone name raises error."""
     sample_config.MODEL.BACKBONE = "test"
-    sample_config.MODEL.BOX_PREDICTOR = first(box_predictors.keys())
     with pytest.raises(NameError):
         verify_config(sample_config)
 
 
 def test_verifying_config_wrong_box_predictor(sample_config):
     """Test if passing incorrect box predictor name raises error."""
-    sample_config.MODEL.BACKBONE = first(backbones.keys())
     sample_config.MODEL.BOX_PREDICTOR = "test"
+    with pytest.raises(NameError):
+        verify_config(sample_config)
+
+
+def test_verifying_config_wrong_dataset(sample_config):
+    """Test if passing incorrect dataset name raises error"""
+    sample_config.DATA.DATASET = "test"
     with pytest.raises(NameError):
         verify_config(sample_config)
 

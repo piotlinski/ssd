@@ -5,6 +5,7 @@ from typing import Optional
 
 from yacs.config import CfgNode
 
+from ssd.data.datasets import datasets
 from ssd.modeling.backbones import backbones
 from ssd.modeling.box_predictors import box_predictors
 
@@ -12,6 +13,7 @@ _C = CfgNode()
 
 # data config
 _C.DATA = CfgNode()
+_C.DATA.DATASET = "MultiscaleMNIST"
 _C.DATA.CHANNELS = 3
 _C.DATA.SHAPE = (300, 300)
 _C.DATA.N_CLASSES = 10
@@ -59,6 +61,8 @@ def verify_config(config: CfgNode):
         raise NameError("Backbone %s is not available", config.MODEL.BACKBONE)
     if config.MODEL.BOX_PREDICTOR not in box_predictors:
         raise NameError("Box predictor %s is not available", config.MODEL.BOX_PREDICTOR)
+    if config.DATA.DATASET not in datasets:
+        raise NameError("Dataset %s is not available", config.DATA.DATASET)
     prior_len = len(config.DATA.PRIOR.BOXES_PER_LOC)
     if any(
         len(prior_config_tuple) != prior_len

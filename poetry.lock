@@ -519,7 +519,7 @@ version = "0.1.7"
 PyYAML = "*"
 
 [metadata]
-content-hash = "9484b79cdffa6d2548da28677774ac2b51a0fad9624a84dbf65e3590324713c1"
+content-hash = "d2e133b4c8ac6704cae86179b4f85d61a57531872935fe4aa11e124063f4e8f6"
 python-versions = "^3.8"
 
 [metadata.files]
