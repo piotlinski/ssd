@@ -7,6 +7,18 @@ from yacs.config import CfgNode
 
 _C = CfgNode()
 
+# data config
+_C.DATA = CfgNode()
+_C.DATA.CHANNELS = 3
+
+# model config
+_C.MODEL = CfgNode()
+_C.MODEL.BATCH_NORM = True
+_C.MODEL.PRETRAINED_URL = (
+    "https://s3.amazonaws.com/amdegroot-models/vgg16_reducedfc.pth"
+)
+
+
 logger = logging.getLogger(__name__)
 
 
