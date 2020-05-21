@@ -66,3 +66,14 @@ def corner_bbox_to_center_bbox(corner_bboxes: torch.Tensor) -> torch.Tensor:
     xy = (corner_bboxes[..., :2] + corner_bboxes[..., 2:]) / 2
     wh = corner_bboxes[..., 2:] - corner_bboxes[..., :2]
     return torch.cat([xy, wh], corner_bboxes.dim() - 1)
+
+
+def area(left_top: torch.Tensor, right_bottom: torch.Tensor):
+    """ Compute area of rectangles given two corners.
+
+    :param left_top: (N, 2) left top corner
+    :param right_bottom: (N, 2) right bottom corner
+    :return: (N) area of the rectangle
+    """
+    hw = torch.clamp(right_bottom - left_top, min=0.0)
+    return hw[..., 0] * hw[..., 1]

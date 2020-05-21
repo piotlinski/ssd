@@ -5,6 +5,7 @@ import pytest
 import torch
 
 from ssd.dataset.bboxes import (
+    area,
     center_bbox_to_corner_bbox,
     convert_boxes_to_locations,
     convert_locations_to_boxes,
@@ -160,3 +161,15 @@ def test_corner_center_reversible(corner_bbox):
     converted = corner_bbox_to_center_bbox(corner_bbox)
     deconverted = center_bbox_to_corner_bbox(converted)
     assert (deconverted == corner_bbox).all()
+
+
+@pytest.mark.parametrize(
+    "left_top, right_bottom, expected_area",
+    [([[1, 1]], [[3, 3]], [4]), ([[0, 3], [5, 8]], [[6, 9], [6, 9]], [36, 1])],
+)
+def test_area(left_top, right_bottom, expected_area):
+    """Test area calculation."""
+    left_top = torch.tensor(left_top)
+    right_bottom = torch.tensor(right_bottom)
+    expected_area = torch.tensor(expected_area)
+    assert (area(left_top, right_bottom) == expected_area).all()
