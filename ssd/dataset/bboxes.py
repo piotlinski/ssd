@@ -52,3 +52,17 @@ def convert_boxes_to_locations(
     centers = (boxes[..., :2] - priors[..., :2]) / priors[..., 2:] / center_variance
     hws = torch.log(boxes[..., 2:] / priors[..., 2:]) / size_variance
     return torch.cat([centers, hws], dim=boxes.dim() - 1)
+
+
+def center_bbox_to_corner_bbox(center_bboxes: torch.Tensor) -> torch.Tensor:
+    """Convert x, y, w, h form to x1, y1, x2, y2."""
+    point_1 = center_bboxes[..., :2] - center_bboxes[..., 2:] / 2
+    point_2 = center_bboxes[..., :2] + center_bboxes[..., 2:] / 2
+    return torch.cat([point_1, point_2], center_bboxes.dim() - 1)
+
+
+def corner_bbox_to_center_bbox(corner_bboxes: torch.Tensor) -> torch.Tensor:
+    """Convert x1, y1, x2, y2 form to x, y, w, h."""
+    xy = (corner_bboxes[..., :2] + corner_bboxes[..., 2:]) / 2
+    wh = corner_bboxes[..., 2:] - corner_bboxes[..., :2]
+    return torch.cat([xy, wh], corner_bboxes.dim() - 1)

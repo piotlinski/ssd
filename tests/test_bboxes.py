@@ -4,7 +4,12 @@ from math import e
 import pytest
 import torch
 
-from ssd.dataset.bboxes import convert_boxes_to_locations, convert_locations_to_boxes
+from ssd.dataset.bboxes import (
+    center_bbox_to_corner_bbox,
+    convert_boxes_to_locations,
+    convert_locations_to_boxes,
+    corner_bbox_to_center_bbox,
+)
 
 
 @pytest.mark.parametrize(
@@ -95,3 +100,63 @@ def test_location_bbox_reversible(locations):
         converted, priors, center_variance=1, size_variance=1
     )
     assert (deconverted == locations).all()
+
+
+@pytest.mark.parametrize(
+    "center_bbox, corner_bbox",
+    [
+        (torch.tensor([5.0, 5.0, 10.0, 10.0]), torch.tensor([0.0, 0.0, 10.0, 10.0])),
+        (
+            torch.tensor([[3.0, 4.0, 2.0, 2.0], [8.0, 5.0, 4.0, 2.0]]),
+            torch.tensor([[2.0, 3.0, 4.0, 5.0], [6.0, 4.0, 10.0, 6.0]]),
+        ),
+    ],
+)
+def test_center_to_corner(center_bbox, corner_bbox):
+    """Test converting bbox from center- to corner-form."""
+    converted = center_bbox_to_corner_bbox(center_bbox)
+    assert (converted == corner_bbox).all()
+
+
+@pytest.mark.parametrize(
+    "corner_bbox, center_bbox",
+    [
+        (torch.tensor([0.0, 0.0, 10.0, 10.0]), torch.tensor([5.0, 5.0, 10.0, 10.0])),
+        (
+            torch.tensor([[2.0, 3.0, 4.0, 5.0], [6.0, 4.0, 10.0, 6.0]]),
+            torch.tensor([[3.0, 4.0, 2.0, 2.0], [8.0, 5.0, 4.0, 2.0]]),
+        ),
+    ],
+)
+def test_corner_to_center(corner_bbox, center_bbox):
+    """Test converting bbox from corner- to center-form."""
+    converted = corner_bbox_to_center_bbox(corner_bbox)
+    assert (converted == center_bbox).all()
+
+
+@pytest.mark.parametrize(
+    "center_bbox",
+    [
+        torch.tensor([5.0, 5.0, 10.0, 10.0]),
+        torch.tensor([[3.0, 4.0, 2.0, 2.0], [8.0, 5.0, 4.0, 2.0]]),
+    ],
+)
+def test_center_corner_reversible(center_bbox):
+    """Test if converting from center to corner form is reversible."""
+    converted = center_bbox_to_corner_bbox(center_bbox)
+    deconverted = corner_bbox_to_center_bbox(converted)
+    assert (deconverted == center_bbox).all()
+
+
+@pytest.mark.parametrize(
+    "corner_bbox",
+    [
+        torch.tensor([0.0, 0.0, 10.0, 10.0]),
+        torch.tensor([[2.0, 3.0, 4.0, 5.0], [6.0, 4.0, 10.0, 6.0]]),
+    ],
+)
+def test_corner_center_reversible(corner_bbox):
+    """Test if converting from corner to center form is reversible."""
+    converted = corner_bbox_to_center_bbox(corner_bbox)
+    deconverted = center_bbox_to_corner_bbox(converted)
+    assert (deconverted == corner_bbox).all()
