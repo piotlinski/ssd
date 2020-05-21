@@ -77,3 +77,21 @@ def area(left_top: torch.Tensor, right_bottom: torch.Tensor):
     """
     hw = torch.clamp(right_bottom - left_top, min=0.0)
     return hw[..., 0] * hw[..., 1]
+
+
+def iou(boxes_1: torch.Tensor, boxes_2: torch.Tensor) -> torch.Tensor:
+    """ Return intersection-over-union (Jaccard index) of boxes.
+
+    :param boxes_1: (N, 4) ground truth boxes
+    :param boxes_2: (N or 1, 4) predicted boxes
+    :return: (N) IoU values
+    """
+    overlap_ltop = torch.max(boxes_1[..., :2], boxes_2[..., :2])
+    overlap_rbot = torch.min(boxes_1[..., 2:], boxes_2[..., 2:])
+    intersection = area(overlap_ltop, overlap_rbot)
+
+    boxes_1_area = area(boxes_1[..., :2], boxes_1[..., 2:])
+    boxes_2_area = area(boxes_2[..., :2], boxes_2[..., 2:])
+    union = boxes_1_area + boxes_2_area - intersection
+
+    return intersection / (union + 1e-5)

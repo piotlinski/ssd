@@ -10,6 +10,7 @@ from ssd.dataset.bboxes import (
     convert_boxes_to_locations,
     convert_locations_to_boxes,
     corner_bbox_to_center_bbox,
+    iou,
 )
 
 
@@ -173,3 +174,24 @@ def test_area(left_top, right_bottom, expected_area):
     right_bottom = torch.tensor(right_bottom)
     expected_area = torch.tensor(expected_area)
     assert (area(left_top, right_bottom) == expected_area).all()
+
+
+@pytest.mark.parametrize(
+    "boxes_1, boxes_2, expected_iou",
+    [
+        ([[0, 0, 10, 10]], [[0, 0, 5, 5]], [0.25]),
+        (
+            [[0, 0, 10, 10], [0, 0, 20, 20]],
+            [[0, 10, 10, 20], [0, 0, 20, 20]],
+            [0.0, 1.0],
+        ),
+    ],
+)
+def test_iou(boxes_1, boxes_2, expected_iou):
+    """Test IOU calculation."""
+    boxes_1 = torch.tensor(boxes_1)
+    boxes_2 = torch.tensor(boxes_2)
+    expected_iou = torch.tensor(expected_iou)
+    assert (
+        torch.round(100 * iou(boxes_1, boxes_2)) == torch.round(100 * expected_iou)
+    ).all()
