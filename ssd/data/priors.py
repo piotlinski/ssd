@@ -140,7 +140,6 @@ def all_prior_boxes(
     for feature_map, stride, small_size, big_size, rect_ratios in zip(
         feature_maps, strides, min_sizes, max_sizes, aspect_ratios
     ):
-        print(strides)
         scale = unit_scale(image_size, stride)
         yield from feature_map_prior_boxes(
             feature_map=feature_map,
