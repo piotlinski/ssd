@@ -52,11 +52,13 @@ _C.MODEL.NMS_THRESHOLD = 0.45
 _C.MODEL.MAX_PER_IMAGE = 100
 _C.MODEL.IOU_THRESHOLD = 0.5
 
-# trainer config
-_C.TRAINER = CfgNode()
-_C.TRAINER.BATCH_SIZE = 30
-_C.TRAINER.NUM_WORKERS = 8
-_C.TRAINER.PIN_MEMORY = True
+# runner config
+_C.RUNNER = CfgNode()
+_C.RUNNER.DEVICE = "gpu"
+_C.RUNNER.BATCH_SIZE = 30
+_C.RUNNER.LR = 1e-3
+_C.RUNNER.NUM_WORKERS = 8
+_C.RUNNER.PIN_MEMORY = True
 
 
 logger = logging.getLogger(__name__)

@@ -9,4 +9,5 @@ def sample_config() -> CfgNode:
     """Return sample config with default values."""
     config = cfg.clone()
     config.MODEL.PRETRAINED_URL = ""
+    config.RUNNER.DEVICE = "cpu"
     return config

@@ -40,9 +40,9 @@ class DefaultDataLoader(DataLoader):
         )
         super().__init__(
             dataset,
-            num_workers=config.TRAINER.NUM_WORKERS,
+            num_workers=config.RUNNER.NUM_WORKERS,
             batch_sampler=batch_sampler,
-            pin_memory=config.TRAINER.PIN_MEMORY,
+            pin_memory=config.RUNNER.PIN_MEMORY,
             collate_fn=collate,
         )
 
@@ -55,7 +55,7 @@ class TrainDataLoader(DefaultDataLoader):
         super().__init__(
             data_transform,
             subset="train",
-            batch_size=config.TRAINER.BATCH_SIZE,
+            batch_size=config.RUNNER.BATCH_SIZE,
             config=config,
         )
 
