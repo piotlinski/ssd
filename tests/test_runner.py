@@ -69,3 +69,16 @@ def test_runner_eval(_test_loader_mock, sample_config):
     untrained_model = deepcopy(runner.model)
     runner.eval()
     assert are_same(runner.model, untrained_model)
+
+
+@pytest.mark.parametrize("data_length", [1, 2])
+def test_model_prediction(data_length, sample_config):
+    """Test predicting with SSD model."""
+    runner = Runner(sample_config)
+    sample_inputs = torch.rand((data_length, 3, 300, 300))
+    result = runner.predict(inputs=sample_inputs)
+    assert len(result) == data_length
+    boxes, scores, labels = result[0]
+    assert boxes.shape == (sample_config.MODEL.MAX_PER_IMAGE, 4)
+    assert scores.shape == (sample_config.MODEL.MAX_PER_IMAGE,)
+    assert labels.shape == (sample_config.MODEL.MAX_PER_IMAGE,)

@@ -2,6 +2,7 @@
 import logging
 import time
 from datetime import timedelta
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -9,7 +10,7 @@ from yacs.config import CfgNode
 
 from ssd.data.loaders import TestDataLoader, TrainDataLoader
 from ssd.loss import MultiBoxLoss
-from ssd.modeling.model import SSD
+from ssd.modeling.model import SSD, process_model_prediction
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +98,17 @@ class Runner:
             )
             losses.append(loss.item())
         logger.info(" EVAL | loss: %10.3f", np.average(losses))
+
+    def predict(
+        self, inputs: torch.Tensor
+    ) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+        """ Perform predictions on given inputs.
+
+        :param inputs: batch of images
+        :return:
+        """
+        self.model.eval()
+        with torch.no_grad():
+            cls_logits, bbox_pred = self.model(inputs)
+        detections = process_model_prediction(self.config, cls_logits, bbox_pred)
+        return detections
