@@ -47,3 +47,23 @@ def test_mnist_dir_verification(
     _ = MultiScaleMNIST(data_dir=".")
     mkdir_mock.assert_called()
     download_mock.assert_called()
+
+
+@patch("ssd.data.datasets.mnist.MultiScaleMNIST.load_labels")
+@patch("ssd.data.datasets.mnist.MultiScaleMNIST.load_images")
+@patch("ssd.data.datasets.mnist.MultiScaleMNIST.download")
+@patch("ssd.data.datasets.mnist.Path.mkdir")
+@patch("ssd.data.datasets.mnist.Path.exists", return_value=False)
+@pytest.mark.parametrize("subset, length", [("train", 60_000), ("test", 10_000)])
+def test_mnist_length(
+    _exists_mock,
+    _mkdir_mock,
+    _download_mock,
+    _load_images_mock,
+    _load_labels_mock,
+    subset,
+    length,
+):
+    """Test dataset length."""
+    dataset = MultiScaleMNIST(data_dir=".", subset=subset)
+    assert len(dataset) == length

@@ -1,7 +1,7 @@
 """Multi MNIST dataset."""
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -20,6 +20,7 @@ class MultiScaleMNIST(BaseDataset):
         "t10k-labels-idx1-ubyte",
     ]
     mnist_url = "http://yann.lecun.com/exdb/mnist/"
+    LENGTHS: Dict[str, int] = {"train": 60_000, "test": 10_000}
 
     def __init__(
         self,
@@ -52,6 +53,10 @@ class MultiScaleMNIST(BaseDataset):
             "test": self.load_labels("t10k-labels-idx1-ubyte", 10_000),
         }
         self.annotation: Optional[Tuple[torch.Tensor, torch.Tensor]] = None
+
+    def __len__(self):
+        """Get dataset length."""
+        return self.LENGTHS[self.subset]
 
     def _get_image(self, item: int) -> torch.Tensor:
         n_digits = np.random.randint(1, self.max_digits)

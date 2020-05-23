@@ -51,3 +51,7 @@ class BaseDataset(data.Dataset):
     def _get_annotation(self, item: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get annotations (boxes and labels) from the dataset."""
         raise NotImplementedError
+
+    def __len__(self):
+        """Get length of the dataset."""
+        raise NotImplementedError
