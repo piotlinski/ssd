@@ -89,14 +89,15 @@ def verify_config(config: CfgNode):
         raise ValueError("Prior config is incorrect")
 
 
-def get_config(config_file: Optional[Path] = None, **kwargs):
+def get_config(config_file: Optional[str] = None, **kwargs):
     """Get yacs config with default values."""
     config = _C.clone()
     if config_file is not None:
-        if config_file.exists():
-            config.merge_from_file(str(config_file))
+        config_path = Path(config_file)
+        if config_path.exists():
+            config.merge_from_file(config_file)
         else:
-            logger.warning("File %s does not exist.", str(config_file))
+            logger.warning("File %s does not exist.", config_file)
     config.update(**kwargs)
     config.freeze()
     verify_config(config)

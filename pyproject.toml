@@ -12,6 +12,7 @@ torchvision = "^0.6.0"
 opencv-python = "^4.2.0"
 albumentations = "^0.4.5"
 numpy = "^1.18.4"
+click = "^7.1.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.1"

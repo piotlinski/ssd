@@ -1,5 +1,4 @@
 """Test SSD config."""
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -17,7 +16,7 @@ def test_default_config():
 @patch("ssd.config.CfgNode.merge_from_file")
 def test_updating_with_yaml(merge_mock, _exists_mock):
     """Test getting config and updating with yaml."""
-    config = get_config(config_file=Path("test"))
+    config = get_config(config_file="test")
     merge_mock.assert_called_with("test")
     assert config is not None
 
@@ -26,7 +25,7 @@ def test_updating_with_yaml(merge_mock, _exists_mock):
 @patch("ssd.config.CfgNode.merge_from_file")
 def test_no_update_when_no_file(merge_mock, _exists_mock):
     """Test if no config update occurs when file does not exist."""
-    config = get_config(config_file=Path("test"))
+    config = get_config(config_file="test")
     merge_mock.assert_not_called()
     assert config is not None
 
