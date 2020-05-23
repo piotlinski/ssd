@@ -18,6 +18,14 @@ def sample_data_loader():
         )
 
 
+def are_same(model_1, model_2):
+    """Compare two models paramaters."""
+    for parameter_1, parameter_2 in zip(model_1.parameters(), model_2.parameters()):
+        if parameter_1.data.ne(parameter_2.data).sum() > 0:
+            return False
+    return True
+
+
 @patch("ssd.run.TestDataLoader")
 @patch("ssd.run.TrainDataLoader")
 @patch("ssd.run.torch.cuda.is_available", return_value=False)
@@ -45,11 +53,19 @@ def test_runner_device_gpu(
 
 
 @patch("ssd.run.TestDataLoader")
-@patch("ssd.run.TrainDataLoader")
+@patch("ssd.run.TrainDataLoader", return_value=sample_data_loader())
 def test_runner_train(_train_loader_mock, _test_loader_mock, sample_config):
     """Test training SSD model."""
     runner = Runner(sample_config)
     untrained_model = deepcopy(runner.model)
-    runner.data_loader = sample_data_loader()
     runner.train()
-    assert runner.model != untrained_model
+    assert not are_same(runner.model, untrained_model)
+
+
+@patch("ssd.run.TestDataLoader", return_value=sample_data_loader())
+def test_runner_eval(_test_loader_mock, sample_config):
+    """Test evaluating SSD model."""
+    runner = Runner(sample_config)
+    untrained_model = deepcopy(runner.model)
+    runner.eval()
+    assert are_same(runner.model, untrained_model)
