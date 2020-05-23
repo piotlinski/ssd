@@ -10,4 +10,7 @@ def sample_config() -> CfgNode:
     config = cfg.clone()
     config.MODEL.PRETRAINED_URL = ""
     config.RUNNER.DEVICE = "cpu"
+    config.DATA.DATASET = "MultiscaleMNIST"
+    config.RUNNER.EPOCHS = 1
+    config.RUNNER.BATCH_SIZE = 2
     return config

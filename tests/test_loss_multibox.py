@@ -50,8 +50,5 @@ def test_box_regression_loss(loss, box_prediction, box_ground_truth):
 
 def test_total_loss(loss, class_prediction, box_prediction, labels, box_ground_truth):
     """Test both loss components calculation."""
-    classification_loss, regression_loss = loss(
-        class_prediction, box_prediction, labels, box_ground_truth
-    )
-    assert classification_loss.item()
-    assert regression_loss.item()
+    value = loss(class_prediction, box_prediction, labels, box_ground_truth)
+    assert value.item()

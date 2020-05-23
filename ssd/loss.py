@@ -1,5 +1,4 @@
 """Loss functions."""
-from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -91,7 +90,7 @@ class MultiBoxLoss(nn.Module):
         predicted_locations: torch.Tensor,
         labels: torch.tensor,
         gt_locations: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> torch.Tensor:
         """ Calculate loss
 
         :param confidence: (batch_size, num_priors, num_classes) class predictions
@@ -99,7 +98,7 @@ class MultiBoxLoss(nn.Module):
         :param labels: (batch_size, num_priors) real labels of all the priors
         :param gt_locations: (batch_size, num_priors, 4) real boxes corresponding all
             the priors
-        :return: regression loss and classification loss
+        :return: summed regression loss and classification loss
         """
         classification_loss = self.classification_loss(
             predictions=confidence, labels=labels
@@ -113,4 +112,4 @@ class MultiBoxLoss(nn.Module):
             positive_mask=positive_mask,
         )
 
-        return regression_loss / n_positive, classification_loss / n_positive
+        return regression_loss / n_positive + classification_loss / n_positive
