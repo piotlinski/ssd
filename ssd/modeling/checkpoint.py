@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-from torch.hub import HASH_REGEX, _download_url_to_file
+from torch.hub import HASH_REGEX, download_url_to_file
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def cache_url(
             # if the hash_prefix is less than 6 characters
             if len(hash_prefix) < 6:
                 hash_prefix = None
-        _download_url_to_file(
+        download_url_to_file(
             url, cached_file, hash_prefix=hash_prefix, progress=progress
         )
     return cached_file

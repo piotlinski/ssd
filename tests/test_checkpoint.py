@@ -17,7 +17,7 @@ def test_default_folder_creation(mkdir_mock, exists_mock):
 @patch("ssd.modeling.checkpoint.Path.exists", return_value=False)
 @patch("ssd.modeling.checkpoint.Path.mkdir")
 @patch("ssd.modeling.checkpoint.HASH_REGEX")
-@patch("ssd.modeling.checkpoint._download_url_to_file")
+@patch("ssd.modeling.checkpoint.download_url_to_file")
 def test_downloading_model(download_mock, hash_regex_mock, _mkdir_mock, _exists_mock):
     """Check if appropriate file is downloaded."""
     hash_regex_mock.search = MagicMock(return_value=None)
@@ -29,7 +29,7 @@ def test_downloading_model(download_mock, hash_regex_mock, _mkdir_mock, _exists_
 
 @patch("ssd.modeling.checkpoint.Path.exists", return_value=False)
 @patch("ssd.modeling.checkpoint.Path.mkdir")
-@patch("ssd.modeling.checkpoint._download_url_to_file")
+@patch("ssd.modeling.checkpoint.download_url_to_file")
 @patch("ssd.modeling.checkpoint.HASH_REGEX")
 @patch("ssd.modeling.checkpoint.urlparse")
 def test_handling_caffe_model(
