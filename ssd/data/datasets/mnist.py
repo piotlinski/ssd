@@ -65,7 +65,7 @@ class MultiScaleMNIST(BaseDataset):
         )
         background = np.zeros(self.image_size).astype(np.float32)
         scales = np.random.choice(self.digit_scales, n_digits, replace=True)
-        boxes = np.empty((len(inds), 4))
+        boxes = np.empty((len(inds), 4), dtype=np.float32)
         for box_idx, (idx, scale) in enumerate(zip(inds, scales)):
             x_size, y_size = self.digit_size[0] * scale, self.digit_size[1] * scale
             y_coord = self.random_coordinate(0, self.image_size[1] - y_size)
