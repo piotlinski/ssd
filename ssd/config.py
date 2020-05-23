@@ -15,7 +15,7 @@ _C = CfgNode()
 _C.DATA = CfgNode()
 _C.DATA.DATASET = "MultiscaleMNIST"
 _C.DATA.DIR = "data"
-_C.DATA.CHANNELS = 3
+_C.DATA.CHANNELS = 1
 _C.DATA.SHAPE = (300, 300)
 _C.DATA.N_CLASSES = 10
 _C.DATA.PIXEL_MEAN = (0.0,)
@@ -40,9 +40,8 @@ _C.DATA.PRIOR.CLIP = True
 # model config
 _C.MODEL = CfgNode()
 _C.MODEL.BATCH_NORM = True
-_C.MODEL.PRETRAINED_URL = (
-    "https://s3.amazonaws.com/amdegroot-models/vgg16_reducedfc.pth"
-)
+# "https://s3.amazonaws.com/amdegroot-models/vgg16_reducedfc.pth"
+_C.MODEL.PRETRAINED_URL = ""
 _C.MODEL.BACKBONE = "VGG300"
 _C.MODEL.BOX_PREDICTOR = "SSD"
 _C.MODEL.CENTER_VARIANCE = 0.1
