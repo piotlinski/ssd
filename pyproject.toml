@@ -1,8 +1,11 @@
 [tool.poetry]
 name = "ssd"
 version = "0.1.0"
-description = ""
+description = "Single Shot Multi-Box Detector implementation in PyTorch"
 authors = ["PiotrJZielinski <piotrekzie100@gmail.com>"]
+packages = [
+    { include = "ssd" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
