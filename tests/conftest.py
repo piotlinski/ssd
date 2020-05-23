@@ -11,6 +11,7 @@ def sample_config() -> CfgNode:
     config.MODEL.PRETRAINED_URL = ""
     config.RUNNER.DEVICE = "cpu"
     config.DATA.DATASET = "MultiscaleMNIST"
+    config.DATA.CHANNELS = 3
     config.RUNNER.EPOCHS = 1
     config.RUNNER.BATCH_SIZE = 2
     config.MODEL.MAX_PER_IMAGE = 10
