@@ -62,6 +62,8 @@ class VGG(nn.Module):
         self.reset_params()
         if config.MODEL.PRETRAINED_URL:
             self.init_pretrain(url=config.MODEL.PRETRAINED_URL)
+        else:
+            self.init_xavier()
 
     def reset_params(self):
         """Initialize model params."""
@@ -75,6 +77,13 @@ class VGG(nn.Module):
         cached_file = cache_url(url)
         state_dict = torch.load(cached_file, map_location="cpu")
         self.backbone.load_state_dict(state_dict)
+
+    def init_xavier(self):
+        """Initialize backbone using xavier initializer."""
+        for module in self.backbone.modules():
+            if isinstance(module, nn.Conv2d):
+                init.xavier_uniform_(module.weight)
+                init.zeros_(module.bias)
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         l2_done = False
