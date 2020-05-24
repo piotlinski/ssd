@@ -88,7 +88,13 @@ def iou(boxes_1: torch.Tensor, boxes_2: torch.Tensor) -> torch.Tensor:
     :param boxes_2: (N or 1, 4) predicted boxes
     :return: (N) IoU values
     """
-    overlap_ltop = torch.max(boxes_1[..., :2], boxes_2[..., :2])
+    try:
+        overlap_ltop = torch.max(boxes_1[..., :2], boxes_2[..., :2])
+    except RuntimeError:
+        print(boxes_1)
+        print(boxes_2)
+        print("------")
+        raise
     overlap_rbot = torch.min(boxes_1[..., 2:], boxes_2[..., 2:])
     intersection = area(overlap_ltop, overlap_rbot)
 

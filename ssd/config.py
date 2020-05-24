@@ -88,7 +88,7 @@ def verify_config(config: CfgNode):
         raise ValueError("Prior config is incorrect")
 
 
-def get_config(config_file: Optional[str] = None, **kwargs):
+def get_config(config_file: Optional[str] = None, **kwargs) -> CfgNode:
     """Get yacs config with default values."""
     config = _C.clone()
     if config_file is not None:

@@ -2,68 +2,46 @@
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 from ssd.data.datasets.mnist import MultiScaleMNIST
 
 
-@patch("ssd.data.datasets.mnist.MultiScaleMNIST.load_labels")
-@patch("ssd.data.datasets.mnist.MultiScaleMNIST.load_images")
-@patch("ssd.data.datasets.mnist.MultiScaleMNIST.verify_mnist_dir")
-def test_mnist_dataset_params(_verify_mock, _load_images_mock, _load_labels_mock):
+@pytest.fixture
+def sample_mnist_data():
+    """Generate sample mnist data for mocking."""
+    data = {
+        "train": {
+            "images": np.random.randint(0, 255, (5, 512, 512)),
+            "boxes": np.random.randint(0, 512, (5, 12, 4)),
+            "labels": np.random.randint(-1, 10, (5, 12)),
+        }
+    }
+    return data
+
+
+@patch("ssd.data.datasets.mnist.h5py.File")
+def test_mnist_dataset_params(h5py_mock, sample_mnist_data):
     """Test MultiScaleMNIST dataset params."""
+    h5py_mock.return_value.__enter__.return_value = sample_mnist_data
     path = "."
-    ds = MultiScaleMNIST(
-        data_dir=path,
-        subset="train",
-        image_size=(1, 300, 300),
-        digit_size=(24, 24),
-        digit_scales=(1, 2, 3, 4),
-        max_digits=10,
-    )
-    assert ds
+    ds = MultiScaleMNIST(data_dir=path, subset="train", h5_filename="test")
     assert ds.data_dir == Path(path).joinpath("mnist")
     assert ds.subset == "train"
-    assert ds.image_size == (1, 300, 300)
-    assert ds.digit_size == (24, 24)
-    assert ds.max_digits == 10
+    assert ds.dataset_file == ds.data_dir.joinpath("test")
+    assert len(ds) == 5
 
 
-@pytest.mark.parametrize("min_idx, max_idx", [(0, 5), (3, 123), (454, 643)])
-def test_random_coord(min_idx, max_idx):
-    """Test random coordinate sampling."""
-    assert min_idx <= MultiScaleMNIST.random_coordinate(min_idx, max_idx) <= max_idx
-
-
-@patch("ssd.data.datasets.mnist.MultiScaleMNIST.load_labels")
-@patch("ssd.data.datasets.mnist.MultiScaleMNIST.load_images")
-@patch("ssd.data.datasets.mnist.MultiScaleMNIST.download")
-@patch("ssd.data.datasets.mnist.Path.mkdir")
-@patch("ssd.data.datasets.mnist.Path.exists", return_value=False)
-def test_mnist_dir_verification(
-    _exists_mock, mkdir_mock, download_mock, _load_images_mock, _load_labels_mock
-):
-    """Test if MNIST data dir is verified."""
-    _ = MultiScaleMNIST(data_dir=".")
-    mkdir_mock.assert_called()
-    download_mock.assert_called()
-
-
-@patch("ssd.data.datasets.mnist.MultiScaleMNIST.load_labels")
-@patch("ssd.data.datasets.mnist.MultiScaleMNIST.load_images")
-@patch("ssd.data.datasets.mnist.MultiScaleMNIST.download")
-@patch("ssd.data.datasets.mnist.Path.mkdir")
-@patch("ssd.data.datasets.mnist.Path.exists", return_value=False)
-@pytest.mark.parametrize("subset, length", [("train", 60_000), ("test", 10_000)])
-def test_mnist_length(
-    _exists_mock,
-    _mkdir_mock,
-    _download_mock,
-    _load_images_mock,
-    _load_labels_mock,
-    subset,
-    length,
-):
-    """Test dataset length."""
-    dataset = MultiScaleMNIST(data_dir=".", subset=subset)
-    assert len(dataset) == length
+@patch("ssd.data.datasets.mnist.h5py.File")
+def test_mnist_data_fetching(h5py_mock, sample_mnist_data):
+    """Test data fetching from h5 file."""
+    h5py_mock.return_value.__enter__.return_value = sample_mnist_data
+    ds = MultiScaleMNIST(data_dir=".", subset="train", h5_filename="test")
+    inserted_labels = sample_mnist_data["train"]["labels"]
+    h5py_mock.return_value = sample_mnist_data
+    images, boxes, labels = ds[0]
+    wrongs = np.count_nonzero(inserted_labels[0] == -1)
+    assert images.shape == (1, 512, 512)
+    assert boxes.shape == (12 - wrongs, 4)
+    assert labels.shape == (12 - wrongs,)

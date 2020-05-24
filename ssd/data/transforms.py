@@ -108,7 +108,9 @@ class DataTransform:
             )
             augmented = augment(image=image.numpy(), bboxes=bboxes, labels=labels)
             image = augmented["image"]
-            bboxes = torch.tensor(self.normalize_bboxes(augmented["bboxes"]))
+            bboxes = torch.tensor(
+                self.normalize_bboxes(augmented["bboxes"]), dtype=torch.float32
+            )
             labels = torch.tensor(augmented["labels"])
         else:
             augment = Compose(self.transforms)

@@ -34,3 +34,7 @@ def train(obj):
 def evaluate(obj):
     runner = obj["runner"]
     runner.eval()
+
+
+if __name__ == "__main__":
+    main()

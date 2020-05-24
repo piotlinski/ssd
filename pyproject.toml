@@ -12,15 +12,14 @@ python = "^3.8"
 yacs = "^0.1.7"
 torch = "^1.5.0"
 torchvision = "^0.6.0"
-opencv-python = "^4.2.0"
 albumentations = "^0.4.5"
 numpy = "^1.18.4"
 click = "^7.1.2"
+h5py = "^2.10.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.1"
 pytest-cov = "^2.8.1"
-pre-commit = "^2.2.0"
 
 [tool.poetry.scripts]
 ssd = "ssd.cli:main"
