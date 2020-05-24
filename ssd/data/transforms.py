@@ -103,7 +103,7 @@ class DataTransform:
             augment = Compose(
                 self.transforms,
                 bbox_params=BboxParams(
-                    format="pascal_voc", label_fields=["labels"], min_visibility=0.25
+                    format="pascal_voc", label_fields=["labels"], min_visibility=0.2
                 ),
             )
             augmented = augment(image=image.numpy(), bboxes=bboxes, labels=labels)
@@ -134,8 +134,8 @@ class TrainDataTransform(DataTransform):
             transforms.extend(color_transforms)
         shape_transforms = [
             HorizontalFlip(p=flip * 0.5),
-            RandomResizedCrop(512, 512, scale=(0.8, 1.0)),
-            ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=45),
+            RandomResizedCrop(512, 512, scale=(0.9, 1.0)),
+            ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=15),
         ]
         transforms.extend(shape_transforms)
         super().__init__(config, transforms)
