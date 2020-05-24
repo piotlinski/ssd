@@ -6,6 +6,7 @@ from typing import List, Tuple
 
 import numpy as np
 import torch
+from tqdm.auto import tqdm
 from yacs.config import CfgNode
 
 from ssd.data.loaders import TestDataLoader, TrainDataLoader
@@ -49,7 +50,7 @@ class Runner:
             self.model.train()
             epoch += 1
             epoch_start = time.time()
-            for images, locations, labels in data_loader:
+            for images, locations, labels in tqdm(data_loader):
                 images = images.to(self.device)
                 locations = locations.to(self.device)
                 labels = labels.to(self.device)
@@ -89,6 +90,10 @@ class Runner:
         data_loader = TestDataLoader(self.config)
         losses = []
         for images, locations, labels in data_loader:
+            images = images.to(self.device)
+            locations = locations.to(self.device)
+            labels = labels.to(self.device)
+
             with torch.no_grad():
                 cls_logits, bbox_pred = self.model(images)
             loss = self.criterion(
@@ -109,6 +114,7 @@ class Runner:
         :return:
         """
         self.model.eval()
+        inputs = inputs.to(self.device)
         with torch.no_grad():
             cls_logits, bbox_pred = self.model(inputs)
         detections = process_model_prediction(self.config, cls_logits, bbox_pred)
