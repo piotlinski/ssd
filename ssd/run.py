@@ -43,6 +43,7 @@ class Runner:
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.RUNNER.LR)
         data_loader = TrainDataLoader(self.config)
         start_time = time.time()
+        logger.info("Starting training for %d epochs", n_epochs)
         for epoch in range(n_epochs):
             losses = []
             self.model.train()

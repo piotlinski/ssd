@@ -17,7 +17,8 @@ def main(ctx: click.Context, config_file: Optional[str]):
     """Main group for subcommands."""
     ctx.ensure_object(dict)
     config = get_config(config_file=config_file)
-    logger.info("Using config: %s" % config)
+    logging.basicConfig(level=logging.INFO)
+    logger.info("Using config:\n %s" % config)
     ctx.obj["config"] = config
     ctx.obj["runner"] = Runner(config=ctx.obj["config"])
 
