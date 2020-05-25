@@ -22,3 +22,4 @@ Use `make` to run commands
 - `make test` - run tests
   - `args="--lf" make test` - run pytest tests with different arguments
 - `make shell` - run poetry shell
+- `make build` - build docker image with SSD package
