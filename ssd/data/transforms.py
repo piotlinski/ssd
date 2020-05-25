@@ -14,7 +14,6 @@ from albumentations import (
     RandomBrightnessContrast,
     RandomSizedBBoxSafeCrop,
     Resize,
-    ShiftScaleRotate,
     normalize_bboxes,
 )
 from albumentations.pytorch import ToTensorV2 as ToTensor
@@ -135,7 +134,6 @@ class TrainDataTransform(DataTransform):
         shape_transforms = [
             HorizontalFlip(p=flip * 0.5),
             RandomSizedBBoxSafeCrop(512, 512),
-            ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=30),
         ]
         transforms.extend(shape_transforms)
         super().__init__(config, transforms)
