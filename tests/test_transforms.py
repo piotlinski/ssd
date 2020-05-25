@@ -53,5 +53,7 @@ def test_train_transform(sample_config):
     """Test train data transform."""
     transform = TrainDataTransform(sample_config)
     image = torch.zeros(3, 10, 10)
-    t_image, _, _ = transform(image=image)
+    bboxes = torch.tensor([[0.0, 2.0, 4.0, 6.0], [5.0, 5.0, 7.0, 7.0]])
+    labels = torch.tensor([1, 2])
+    t_image, _, _ = transform(image=image, bboxes=bboxes, labels=labels)
     assert t_image.shape == (sample_config.DATA.CHANNELS, *sample_config.DATA.SHAPE)

@@ -12,7 +12,7 @@ from albumentations import (
     HueSaturationValue,
     Normalize,
     RandomBrightnessContrast,
-    RandomResizedCrop,
+    RandomSizedBBoxSafeCrop,
     Resize,
     ShiftScaleRotate,
     normalize_bboxes,
@@ -134,8 +134,8 @@ class TrainDataTransform(DataTransform):
             transforms.extend(color_transforms)
         shape_transforms = [
             HorizontalFlip(p=flip * 0.5),
-            RandomResizedCrop(512, 512, scale=(0.9, 1.0)),
-            ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=15),
+            RandomSizedBBoxSafeCrop(512, 512),
+            ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=30),
         ]
         transforms.extend(shape_transforms)
         super().__init__(config, transforms)
