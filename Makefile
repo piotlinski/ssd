@@ -10,3 +10,11 @@ test: ## Run tests
 
 shell: ## Run poetry shell
 	poetry shell
+
+build: ## Build docker image
+	bash -c 'read -sp "PyPI trasee_rd password: " && docker build --build-arg PYPI_PASSWORD="$$REPLY" -f Dockerfile -t ssd:latest .'
+
+docker_args ?= --gpus all  --volume $(pwd):/app --volume $(pwd)/data:/app/data --volume $(pwd)/models:/app/models
+ssd_args ?=
+run: ## Run model
+	docker run  --rm $(docker_args) ssd:latest $(ssd_args)
