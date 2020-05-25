@@ -50,5 +50,5 @@ class MultiScaleMNIST(BaseDataset):
         mask = np.where(labels != -1)
         return (
             torch.from_numpy(boxes[mask]).float(),
-            torch.from_numpy(labels[mask]).long(),
+            torch.from_numpy(labels[mask] + 1).long(),  # 0 must be background class
         )

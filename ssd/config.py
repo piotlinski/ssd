@@ -17,7 +17,7 @@ _C.DATA.DATASET = "MultiscaleMNIST"
 _C.DATA.DIR = "data"
 _C.DATA.CHANNELS = 1
 _C.DATA.SHAPE = (300, 300)
-_C.DATA.N_CLASSES = 10
+_C.DATA.N_CLASSES = 11
 _C.DATA.PIXEL_MEAN = (0.0,)
 _C.DATA.PIXEL_STD = (1.0,)
 # data prior config

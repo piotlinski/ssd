@@ -50,7 +50,9 @@ class Runner:
             self.model.train()
             epoch += 1
             epoch_start = time.time()
-            for images, locations, labels in tqdm(data_loader):
+            pbar = tqdm(data_loader)
+            pbar.set_description("TRAIN | loss ---.---")
+            for images, locations, labels in pbar:
                 images = images.to(self.device)
                 locations = locations.to(self.device)
                 labels = labels.to(self.device)
@@ -67,10 +69,11 @@ class Runner:
                 loss.backward()
                 optimizer.step()
                 losses.append(loss.item())
+                pbar.set_description(f"TRAIN | loss {loss.item():7.3f}")
             epoch_time = time.time() - epoch_start
             eta = (n_epochs - epoch) * timedelta(seconds=epoch_time)
             logger.info(
-                "TRAIN | epoch: %6d | lr: %.5f | loss: %10.3f | eta: %s",
+                " TRAIN | epoch: %4d | lr: %.5f | loss: %7.3f | eta: %s",
                 epoch,
                 optimizer.param_groups[0]["lr"],
                 np.average(losses),
@@ -96,14 +99,15 @@ class Runner:
 
             with torch.no_grad():
                 cls_logits, bbox_pred = self.model(images)
-            loss = self.criterion(
-                confidence=cls_logits,
-                predicted_locations=bbox_pred,
-                labels=labels,
-                gt_locations=locations,
-            )
+
+                loss = self.criterion(
+                    confidence=cls_logits,
+                    predicted_locations=bbox_pred,
+                    labels=labels,
+                    gt_locations=locations,
+                )
             losses.append(loss.item())
-        logger.info(" EVAL | loss: %10.3f", np.average(losses))
+        logger.info("  EVAL | loss: %7.3f", np.average(losses))
 
     def predict(
         self, inputs: torch.Tensor
