@@ -2,6 +2,7 @@
 import logging
 import time
 from datetime import timedelta
+from multiprocessing import Pool
 from typing import List, Tuple
 
 import numpy as np
@@ -10,6 +11,7 @@ from tqdm.auto import tqdm
 from yacs.config import CfgNode
 
 from ssd.data.loaders import TestDataLoader, TrainDataLoader
+from ssd.data.transforms import DataTransform
 from ssd.loss import MultiBoxLoss
 from ssd.modeling.checkpoint import CheckPointer
 from ssd.modeling.model import SSD, process_model_prediction
@@ -129,11 +131,15 @@ class Runner:
         """ Perform predictions on given inputs.
 
         :param inputs: batch of images
-        :return:
+        :return: model prediction
         """
         self.model.eval()
-        inputs = inputs.to(self.device)
+        transform = DataTransform(self.config)
+        with Pool(processes=self.config.RUNNER.NUM_WORKERS) as pool:
+            transformed_inputs, *_ = zip(*pool.map(transform, inputs))
+        stacked_inputs = torch.stack(transformed_inputs)
+        stacked_inputs = stacked_inputs.to(self.device)
         with torch.no_grad():
-            cls_logits, bbox_pred = self.model(inputs)
+            cls_logits, bbox_pred = self.model(stacked_inputs)
         detections = process_model_prediction(self.config, cls_logits, bbox_pred)
         return detections

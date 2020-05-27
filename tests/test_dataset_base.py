@@ -24,7 +24,6 @@ def test_calculating_dataset_stats(getitem_mock, _len_mock, channels):
     """Verify if dataset stats are calculated properly."""
     getitem_mock.return_value = torch.ones((channels, 5, 5)), None, None
     ds = BaseDataset(".")
-    print(ds[0])
     pixel_mean, pixel_std = ds.pixel_mean_std()
     assert pixel_mean == channels * (1,)
     assert pixel_std == channels * (0,)
