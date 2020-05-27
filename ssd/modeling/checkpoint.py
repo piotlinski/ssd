@@ -100,3 +100,20 @@ class CheckPointer:
         torch.save(self.model.state_dict(), save_file)
         logger.info(" CHECKPOINT | saved model checkpoint to %s" % save_file)
         self.last_checkpoint_file.write_text(str(save_file))
+
+    def load(self, filename: Optional[str] = None):
+        """ Load model checkpoint. If no name provided - use latest.
+
+        :param filename: optional checkpoint file to use
+        """
+        if filename is None and self.last_checkpoint is None:
+            logger.info(" CHECKPOINT | No checkpoint chosen")
+        else:
+            load_file = Path(filename) if filename is not None else self.last_checkpoint
+
+            if not load_file.exists():  # type: ignore
+                logger.info(" CHECKPOINT | Checkpoint %s not found", load_file)
+            else:
+                checkpoint = torch.load(load_file, map_location="cpu")
+                self.model.load_state_dict(checkpoint)
+                logger.info(" CHECKPOINT | loaded model checkpoint from %s" % load_file)
