@@ -3,7 +3,10 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
+import torch
+import torch.nn as nn
 from torch.hub import HASH_REGEX, download_url_to_file
+from yacs.config import CfgNode
 
 logger = logging.getLogger(__name__)
 
@@ -61,3 +64,39 @@ def cache_url(
             url, cached_file, hash_prefix=hash_prefix, progress=progress
         )
     return cached_file
+
+
+class CheckPointer:
+    """Class to handle model checkpointing."""
+
+    _LAST_CHECKPOINT_FILENAME = "LAST_CHECKPOINT.txt"
+
+    def __init__(self, config: CfgNode, model: nn.Module):
+        """
+        :param config: SSD config
+        :param model: model to be checkpointed
+        """
+        self.model = model
+        self.save_dir = Path(config.MODEL.CHECKPOINT_DIR)
+        self.last_checkpoint_file = self.save_dir.joinpath(
+            self._LAST_CHECKPOINT_FILENAME
+        )
+
+    @property
+    def last_checkpoint(self) -> Optional[Path]:
+        """Get path to last checkpoint."""
+        last_checkpoint_path = self.last_checkpoint_file.read_text()
+        if last_checkpoint_path:
+            return Path(last_checkpoint_path)
+        else:
+            return None
+
+    def save(self, filename: str):
+        """ Save model to checkpoint and tag it.
+
+        :param filename: checkpoint name
+        """
+        save_file = self.save_dir.joinpath(f"{filename}.pth")
+        torch.save(self.model.state_dict(), save_file)
+        logger.info(" CHECKPOINT | saved model checkpoint to %s" % save_file)
+        self.last_checkpoint_file.write_text(str(save_file))
