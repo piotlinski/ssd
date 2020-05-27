@@ -57,10 +57,14 @@ def test_handling_caffe_model(
     )
 
 
+@patch("ssd.modeling.checkpoint.Path.touch")
+@patch("ssd.modeling.checkpoint.Path.mkdir")
 @patch("ssd.modeling.checkpoint.print")
 @patch("ssd.modeling.checkpoint.redirect_stdout")
 @patch("ssd.modeling.checkpoint.Path.open")
-def test_storing_checkpoint_config(open_mock, redirect_mock, print_mock, sample_config):
+def test_storing_checkpoint_config(
+    open_mock, redirect_mock, print_mock, _mkdir_mock, _touch_mock, sample_config
+):
     """Verify if config is stored."""
     checkpointer = CheckPointer(config=sample_config, model=nn_module_mock)
     checkpointer.store_config()
@@ -68,6 +72,8 @@ def test_storing_checkpoint_config(open_mock, redirect_mock, print_mock, sample_
     print_mock.assert_called_with(sample_config.dump())
 
 
+@patch("ssd.modeling.checkpoint.Path.touch")
+@patch("ssd.modeling.checkpoint.Path.mkdir")
 @patch("ssd.modeling.checkpoint.Path.read_text", return_value="test")
 def test_last_checkpoint(read_text_mock, nn_module_mock, sample_config):
     """Test if last_checkpoint is generated correctly."""
@@ -76,6 +82,8 @@ def test_last_checkpoint(read_text_mock, nn_module_mock, sample_config):
     read_text_mock.assert_called_once()
 
 
+@patch("ssd.modeling.checkpoint.Path.touch")
+@patch("ssd.modeling.checkpoint.Path.mkdir")
 @patch("ssd.modeling.checkpoint.Path.read_text", return_value="")
 def test_empty_last_checkpoint(read_text_mock, nn_module_mock, sample_config):
     """Test if None returned for no last checkpoint."""
@@ -84,6 +92,8 @@ def test_empty_last_checkpoint(read_text_mock, nn_module_mock, sample_config):
     read_text_mock.assert_called_once()
 
 
+@patch("ssd.modeling.checkpoint.Path.touch")
+@patch("ssd.modeling.checkpoint.Path.mkdir")
 @patch("ssd.modeling.checkpoint.Path.write_text")
 @patch("ssd.modeling.checkpoint.torch.save")
 def test_saving(torch_save_mock, write_text_mock, nn_module_mock, sample_config):
@@ -96,6 +106,8 @@ def test_saving(torch_save_mock, write_text_mock, nn_module_mock, sample_config)
     write_text_mock.assert_called_with(str(file))
 
 
+@patch("ssd.modeling.checkpoint.Path.touch")
+@patch("ssd.modeling.checkpoint.Path.mkdir")
 @patch("ssd.modeling.checkpoint.Path.exists", return_value=True)
 @patch("ssd.modeling.checkpoint.Path.read_text", return_value="latest")
 @patch("ssd.modeling.checkpoint.torch.load")
@@ -110,6 +122,8 @@ def test_loading(
     nn_module_mock.load_state_dict.assert_called_once()
 
 
+@patch("ssd.modeling.checkpoint.Path.touch")
+@patch("ssd.modeling.checkpoint.Path.mkdir")
 @patch("ssd.modeling.checkpoint.Path.exists", return_value=True)
 @patch("ssd.modeling.checkpoint.Path.read_text", return_value="latest")
 @patch("ssd.modeling.checkpoint.torch.load")
@@ -123,6 +137,8 @@ def test_loading_last_checkpoint(
     nn_module_mock.load_state_dict.assert_called_once()
 
 
+@patch("ssd.modeling.checkpoint.Path.touch")
+@patch("ssd.modeling.checkpoint.Path.mkdir")
 @patch("ssd.modeling.checkpoint.Path.exists", return_value=False)
 @patch("ssd.modeling.checkpoint.Path.read_text", return_value="latest")
 @patch("ssd.modeling.checkpoint.torch.load")
@@ -136,6 +152,8 @@ def test_loading_no_file(
     nn_module_mock.load_state_dict.assert_not_called()
 
 
+@patch("ssd.modeling.checkpoint.Path.touch")
+@patch("ssd.modeling.checkpoint.Path.mkdir")
 @patch("ssd.modeling.checkpoint.Path.exists", return_value=False)
 @patch("ssd.modeling.checkpoint.Path.read_text", return_value="")
 @patch("ssd.modeling.checkpoint.torch.load")
