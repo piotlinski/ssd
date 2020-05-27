@@ -43,6 +43,7 @@ _C.MODEL.BATCH_NORM = True
 # "https://s3.amazonaws.com/amdegroot-models/vgg16_reducedfc.pth"
 _C.MODEL.PRETRAINED_URL = ""
 _C.MODEL.CHECKPOINT_DIR = "checkpoints"
+_C.MODEL.CHECKPOINT_NAME = ""
 _C.MODEL.BACKBONE = "VGG300"
 _C.MODEL.BOX_PREDICTOR = "SSD"
 _C.MODEL.CENTER_VARIANCE = 0.1

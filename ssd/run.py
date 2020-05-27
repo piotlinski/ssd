@@ -11,6 +11,7 @@ from yacs.config import CfgNode
 
 from ssd.data.loaders import TestDataLoader, TrainDataLoader
 from ssd.loss import MultiBoxLoss
+from ssd.modeling.checkpoint import CheckPointer
 from ssd.modeling.model import SSD, process_model_prediction
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,12 @@ class Runner:
         self.config = config
         self.device = self.set_device()
         self.model = SSD(config)
+
+        self.checkpointer = CheckPointer(config=config, model=self.model)
+        self.checkpointer.load(
+            config.MODEL.CHECKPOINT_NAME if config.MODEL.CHECKPOINT_NAME else None
+        )
+
         self.model.to(self.device)
 
         self.criterion = MultiBoxLoss(config.MODEL.NEGATIVE_POSITIVE_RATIO)
