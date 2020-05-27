@@ -57,6 +57,17 @@ def test_handling_caffe_model(
     )
 
 
+@patch("ssd.modeling.checkpoint.print")
+@patch("ssd.modeling.checkpoint.redirect_stdout")
+@patch("ssd.modeling.checkpoint.Path.open")
+def test_storing_checkpoint_config(open_mock, redirect_mock, print_mock, sample_config):
+    """Verify if config is stored."""
+    checkpointer = CheckPointer(config=sample_config, model=nn_module_mock)
+    checkpointer.store_config()
+    redirect_mock.assert_called_with(open_mock.return_value.__enter__.return_value)
+    print_mock.assert_called_with(sample_config.dump())
+
+
 @patch("ssd.modeling.checkpoint.Path.read_text", return_value="test")
 def test_last_checkpoint(read_text_mock, nn_module_mock, sample_config):
     """Test if last_checkpoint is generated correctly."""

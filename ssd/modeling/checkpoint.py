@@ -1,4 +1,5 @@
 import logging
+from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
@@ -76,12 +77,19 @@ class CheckPointer:
         :param config: SSD config
         :param model: model to be checkpointed
         """
+        self.config = config
         self.model = model
         self.checkpoint_dir = Path(config.MODEL.CHECKPOINT_DIR)
         self.checkpoint_dir.mkdir(exist_ok=True)
         self.last_checkpoint_file = self.checkpoint_dir.joinpath(
             self._LAST_CHECKPOINT_FILENAME
         )
+
+    def store_config(self):
+        """Save config to yml file."""
+        with self.checkpoint_dir.joinpath("config.yml").open("w") as f:
+            with redirect_stdout(f):
+                print(self.config.dump())
 
     @property
     def last_checkpoint(self) -> Optional[Path]:
