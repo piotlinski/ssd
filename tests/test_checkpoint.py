@@ -94,7 +94,8 @@ def test_loading(
     """Test if loading from given checkpoint is conducted."""
     checkpointer = CheckPointer(config=sample_config, model=nn_module_mock)
     checkpointer.load("test")
-    torch_load_mock.assert_called_with(Path("test"), map_location="cpu")
+    path = checkpointer.checkpoint_dir.joinpath("test")
+    torch_load_mock.assert_called_with(path, map_location="cpu")
     nn_module_mock.load_state_dict.assert_called_once()
 
 

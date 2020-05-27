@@ -77,8 +77,9 @@ class CheckPointer:
         :param model: model to be checkpointed
         """
         self.model = model
-        self.save_dir = Path(config.MODEL.CHECKPOINT_DIR)
-        self.last_checkpoint_file = self.save_dir.joinpath(
+        self.checkpoint_dir = Path(config.MODEL.CHECKPOINT_DIR)
+        self.checkpoint_dir.mkdir(exist_ok=True)
+        self.last_checkpoint_file = self.checkpoint_dir.joinpath(
             self._LAST_CHECKPOINT_FILENAME
         )
 
@@ -96,7 +97,7 @@ class CheckPointer:
 
         :param filename: checkpoint name
         """
-        save_file = self.save_dir.joinpath(f"{filename}.pth")
+        save_file = self.checkpoint_dir.joinpath(f"{filename}.pth")
         torch.save(self.model.state_dict(), save_file)
         logger.info(" CHECKPOINT | saved model checkpoint to %s" % save_file)
         self.last_checkpoint_file.write_text(str(save_file))
@@ -109,7 +110,11 @@ class CheckPointer:
         if filename is None and self.last_checkpoint is None:
             logger.info(" CHECKPOINT | No checkpoint chosen")
         else:
-            load_file = Path(filename) if filename is not None else self.last_checkpoint
+            load_file = (
+                self.checkpoint_dir.joinpath(filename)
+                if filename is not None
+                else self.last_checkpoint
+            )
 
             if not load_file.exists():  # type: ignore
                 logger.info(" CHECKPOINT | Checkpoint %s not found", load_file)
