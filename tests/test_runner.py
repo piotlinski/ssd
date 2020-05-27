@@ -64,11 +64,18 @@ def test_runner_device_gpu(
     assert runner.set_device() == torch.device(device)
 
 
+@patch("ssd.run.CheckPointer.save")
+@patch("ssd.run.CheckPointer.store_config")
 @patch("ssd.run.CheckPointer.load")
 @patch("ssd.run.TestDataLoader")
 @patch("ssd.run.TrainDataLoader", return_value=sample_data_loader())
 def test_runner_train(
-    _train_loader_mock, _test_loader_mock, _checkpointer_load_mock, sample_config
+    _train_loader_mock,
+    _test_loader_mock,
+    _checkpointer_load_mock,
+    _checkpointer_store_config_mock,
+    _checkpointer_save_mock,
+    sample_config,
 ):
     """Test training SSD model."""
     runner = Runner(sample_config)

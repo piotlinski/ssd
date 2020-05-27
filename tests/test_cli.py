@@ -9,6 +9,7 @@ from ssd.data.datasets import BaseDataset
 from ssd.run import Runner
 
 
+@patch("ssd.run.CheckPointer")
 @patch("ssd.run.SSD")
 @pytest.mark.parametrize(
     "command, args, task_mock",
@@ -18,7 +19,9 @@ from ssd.run import Runner
         (stats, [], "ssd.data.datasets.base.BaseDataset.pixel_mean_std"),
     ],
 )
-def test_failed_commands_exit_code(_ssd_mock, command, args, task_mock, sample_config):
+def test_failed_commands_exit_code(
+    _ssd_mock, _checkpointer_mock, command, args, task_mock, sample_config
+):
     """Test if raising unhandled exception return exit code 1"""
     runner = CliRunner()
     exception = RuntimeError("Random error")
