@@ -84,6 +84,7 @@ class CheckPointer:
         self.last_checkpoint_file = self.checkpoint_dir.joinpath(
             self._LAST_CHECKPOINT_FILENAME
         )
+        self.last_checkpoint_file.touch(exist_ok=True)
 
     def store_config(self):
         """Save config to yml file."""
