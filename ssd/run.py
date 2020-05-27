@@ -11,6 +11,7 @@ from yacs.config import CfgNode
 
 from ssd.data.loaders import TestDataLoader, TrainDataLoader
 from ssd.loss import MultiBoxLoss
+from ssd.modeling.checkpoint import CheckPointer
 from ssd.modeling.model import SSD, process_model_prediction
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,12 @@ class Runner:
         self.config = config
         self.device = self.set_device()
         self.model = SSD(config)
+
+        self.checkpointer = CheckPointer(config=config, model=self.model)
+        self.checkpointer.load(
+            config.MODEL.CHECKPOINT_NAME if config.MODEL.CHECKPOINT_NAME else None
+        )
+
         self.model.to(self.device)
 
         self.criterion = MultiBoxLoss(config.MODEL.NEGATIVE_POSITIVE_RATIO)
@@ -40,6 +47,7 @@ class Runner:
 
     def train(self):
         """Train the model."""
+        self.checkpointer.store_config()
         n_epochs = self.config.RUNNER.EPOCHS
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.RUNNER.LR)
         data_loader = TrainDataLoader(self.config)
@@ -80,6 +88,12 @@ class Runner:
                 str(eta),
             )
             self.eval()
+            self.checkpointer.save(
+                f"{self.config.MODEL.BOX_PREDICTOR}"
+                f"-{self.config.MODEL.BACKBONE}"
+                f"_{self.config.DATA.DATASET}"
+                f"-{epoch:04d}"
+            )
         total_time = timedelta(seconds=time.time() - start_time)
         logger.info(
             "Training finished. Total training time %s (%.3f s / epoch)",
