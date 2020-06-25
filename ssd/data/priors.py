@@ -25,11 +25,11 @@ def unit_center(
     :param scale: scale calculated using unit_scale function
     :return: unit center coords
     """
-    x_index, y_index = indices
-    x_scale, y_scale = scale
+    y_index, x_index = indices
+    y_scale, x_scale = scale
     x_center = (x_index + 0.5) / x_scale
     y_center = (y_index + 0.5) / y_scale
-    return x_center, y_center
+    return y_center, x_center
 
 
 def square_box(box_size: float, scale: Tuple[float, float]) -> Tuple[float, float]:
@@ -39,7 +39,7 @@ def square_box(box_size: float, scale: Tuple[float, float]) -> Tuple[float, floa
     :param scale: reference for normalizing
     :return: normalized square box shape
     """
-    return box_size / scale[0], box_size / scale[1]
+    return box_size / scale[1], box_size / scale[0]
 
 
 def rect_box(
@@ -76,7 +76,7 @@ def prior_boxes(
     :param rect_ratios: rectangular box ratios
     :return: Iterable of prior bounding box params
     """
-    x, y = unit_center(indices, scale)
+    y, x = unit_center(indices, scale)
 
     small_square_box = (x, y, *square_box(small_size, scale))
     yield small_square_box
