@@ -118,7 +118,7 @@ def assign_priors(
     best_prior_per_target, ppt_idx = ious.max(0)
 
     for target_idx, prior_idx in enumerate(ppt_idx):
-        best_target_per_prior[prior_idx] = target_idx
+        tpp_idx[prior_idx] = target_idx
 
     best_target_per_prior.index_fill_(0, ppt_idx, 2)  # 2 -> every target has a prior
     labels = gt_labels[tpp_idx]
