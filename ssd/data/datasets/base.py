@@ -4,6 +4,7 @@ from typing import Callable, Optional, Tuple
 
 import torch
 import torch.utils.data as data
+from yacs.config import CfgNode
 
 DataTransformType = Optional[
     Callable[
@@ -69,3 +70,15 @@ class BaseDataset(data.Dataset):
         pixel_mean = torch.mean(torch.stack(means), dim=0).tolist()
         pixel_std = torch.mean(torch.stack(stds), dim=0).tolist()
         return tuple(pixel_mean), tuple(pixel_std)
+
+
+def onehot_labels(config: CfgNode, labels: torch.Tensor):
+    """ Convert loaded labels to one-hot form.
+
+    :param config: SSD config
+    :param labels: tensor of shape (batch_size x n_cells) with integers indicating class
+    :return: tensor of shape (batch_size x n_cells x n_classes) with one-hot encodings
+    """
+    onehot = torch.zeros((*labels.shape[:2], config.DATA.N_CLASSES))
+    onehot.scatter_(-1, labels.unsqueeze(-1), 1.0)
+    return onehot
