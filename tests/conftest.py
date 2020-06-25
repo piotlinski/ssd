@@ -1,4 +1,5 @@
 import pytest
+import torch
 from yacs.config import CfgNode
 
 from ssd.config import _C as cfg
@@ -16,3 +17,24 @@ def sample_config() -> CfgNode:
     config.RUNNER.BATCH_SIZE = 2
     config.MODEL.MAX_PER_IMAGE = 10
     return config
+
+
+@pytest.fixture
+def sample_image(sample_config):
+    """Sample torch image of correct shape."""
+    return torch.zeros((sample_config.DATA.CHANNELS, *sample_config.DATA.SHAPE))
+
+
+@pytest.fixture
+def sample_prediction(sample_config):
+    """Sample cls_logits and bbox_pred for given config."""
+    dim = sum(
+        [
+            features ** 2 * boxes
+            for features, boxes in zip(
+                sample_config.DATA.PRIOR.FEATURE_MAPS,
+                sample_config.DATA.PRIOR.BOXES_PER_LOC,
+            )
+        ]
+    )
+    return torch.zeros((1, dim, sample_config.DATA.N_CLASSES)), torch.zeros((1, dim, 4))

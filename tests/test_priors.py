@@ -60,7 +60,7 @@ def test_unit_center(indices, scale, expected):
 
 @pytest.mark.parametrize(
     "box_size, scale, expected",
-    [(5, (0.5, 0.5), (10, 10)), (15, (2, 5), (7.5, 3)), (27, (0.4, 3), (67.5, 9))],
+    [(5, (0.5, 0.5), (10, 10)), (15, (2, 5), (3, 7.5)), (27, (0.4, 3), (9, 67.5))],
 )
 def test_square_box(box_size, scale, expected):
     """Test square box size calculation."""
@@ -71,8 +71,8 @@ def test_square_box(box_size, scale, expected):
     "box_size, scale, ratio, expected",
     [
         (5, (0.5, 0.5), 4, ((20, 5), (5, 20))),
-        (15, (2, 5), 9, ((22.5, 1), (2.5, 9))),
-        (27, (0.4, 3), 0.25, ((33.75, 18), (135, 4.5))),
+        (15, (2, 5), 9, ((9, 2.5), (1, 22.5))),
+        (27, (0.4, 3), 0.25, ((4.5, 135), (18, 33.75))),
     ],
 )
 def test_rect_box(box_size, scale, ratio, expected):
