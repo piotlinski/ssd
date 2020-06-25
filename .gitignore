@@ -213,3 +213,6 @@ data/*
 
 # models dir
 models/*
+
+# checkpoints dir
+checkpoints/*
