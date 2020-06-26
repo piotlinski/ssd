@@ -108,7 +108,6 @@ class CheckPointer:
         """
         save_file = self.checkpoint_dir.joinpath(f"{filename}.pth")
         torch.save(self.model.state_dict(), save_file)
-        logger.info(" CHECKPOINT | saved model checkpoint to %s" % save_file)
         self.last_checkpoint_file.write_text(str(save_file))
 
     def load(self, filename: Optional[str] = None):
