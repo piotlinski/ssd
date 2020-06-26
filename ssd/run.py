@@ -3,7 +3,7 @@ import logging
 import time
 from datetime import timedelta
 from multiprocessing import Pool
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -56,8 +56,8 @@ class Runner:
         start_time = time.time()
         global_step = 0
         log_step_losses = []
-        log_step_loss = None
-        eval_step_loss = None
+        log_step_loss = float("nan")
+        eval_step_loss = float("nan")
         eta = None
         logger.info("Starting training for %d epochs", n_epochs)
         pbar_desc = (
@@ -77,12 +77,13 @@ class Runner:
             for images, locations, labels in pbar:
                 global_step += 1
                 pbar.set_description(
-                    pbar_desc % (
+                    pbar_desc
+                    % (
                         log_step_loss,
                         eval_step_loss,
                         epoch,
                         optimizer.param_groups[0]["lr"],
-                        str(eta)
+                        str(eta),
                     )
                 )
                 images = images.to(self.device)
@@ -124,7 +125,7 @@ class Runner:
             total_time.total_seconds() / n_epochs,
         )
 
-    def eval(self) -> Dict[str, Any]:
+    def eval(self) -> float:
         """Evaluate the model."""
         self.model.eval()
         data_loader = TestDataLoader(self.config)
