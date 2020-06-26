@@ -65,4 +65,9 @@ class TestDataLoader(DefaultDataLoader):
 
     def __init__(self, config: CfgNode):
         data_transform = DataTransform(config)
-        super().__init__(data_transform, subset="test", batch_size=1, config=config)
+        super().__init__(
+            data_transform,
+            subset="test",
+            batch_size=2 * config.RUNNER.BATCH_SIZE,
+            config=config,
+        )

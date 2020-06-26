@@ -50,42 +50,23 @@ class Runner:
     def train(self):
         """Train the model."""
         self.checkpointer.store_config()
+        self.model.train()
         n_epochs = self.config.RUNNER.EPOCHS
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.RUNNER.LR)
         data_loader = TrainDataLoader(self.config)
         start_time = time.time()
         global_step = 0
         log_step_losses = []
-        log_step_loss = float("nan")
-        eval_step_loss = float("nan")
-        eta = None
+        eta = "unknown"
         logger.info("Starting training for %d epochs", n_epochs)
-        pbar_desc = (
-            "TRAIN"
-            " | loss %7.3f"
-            " | eval loss %7.3f"
-            " | epoch: %4d"
-            " | lr: %.5f"
-            " | eta: %s"
-        )
         for epoch in range(n_epochs):
             losses = []
-            self.model.train()
             epoch += 1
             epoch_start = time.time()
-            pbar = tqdm(data_loader)
-            for images, locations, labels in pbar:
+            for images, locations, labels in tqdm(
+                data_loader, desc=f"EPOCH {epoch}", unit="step", postfix=f"ETA: {eta}"
+            ):
                 global_step += 1
-                pbar.set_description(
-                    pbar_desc
-                    % (
-                        log_step_loss,
-                        eval_step_loss,
-                        epoch,
-                        optimizer.param_groups[0]["lr"],
-                        str(eta),
-                    )
-                )
                 images = images.to(self.device)
                 locations = locations.to(self.device)
                 labels = labels.to(self.device)
@@ -104,10 +85,19 @@ class Runner:
                 losses.append(loss.item())
                 log_step_losses.append(loss.item())
                 if global_step % self.config.RUNNER.LOG_STEP == 0:
-                    log_step_loss = np.average(log_step_losses)
+                    tqdm.write(
+                        f"TRAIN"
+                        f" | step: {global_step:6d}"
+                        f" | loss: {np.average(log_step_losses):7.3f}"
+                    )
                     log_step_losses = []
                 if global_step % self.config.RUNNER.EVAL_STEP == 0:
-                    eval_step_loss = self.eval()
+                    tqdm.write(
+                        f"EVAL "
+                        f" | step: {global_step:6d}"
+                        f" | loss: {self.eval():7.3f}"
+                    )
+                    self.model.train()
                 if global_step % self.config.RUNNER.CHECKPOINT_STEP == 0:
                     self.checkpointer.save(
                         f"{self.config.MODEL.BOX_PREDICTOR}"
