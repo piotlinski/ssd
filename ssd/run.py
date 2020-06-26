@@ -54,15 +54,38 @@ class Runner:
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.RUNNER.LR)
         data_loader = TrainDataLoader(self.config)
         start_time = time.time()
+        global_step = 0
+        log_step_losses = []
+        log_step_loss = float("nan")
+        eval_step_loss = float("nan")
+        eta = None
         logger.info("Starting training for %d epochs", n_epochs)
+        pbar_desc = (
+            "TRAIN"
+            " | loss %7.3f"
+            " | eval loss %7.3f"
+            " | epoch: %4d"
+            " | lr: %.5f"
+            " | eta: %s"
+        )
         for epoch in range(n_epochs):
             losses = []
             self.model.train()
             epoch += 1
             epoch_start = time.time()
             pbar = tqdm(data_loader)
-            pbar.set_description("TRAIN | loss ---.---")
             for images, locations, labels in pbar:
+                global_step += 1
+                pbar.set_description(
+                    pbar_desc
+                    % (
+                        log_step_loss,
+                        eval_step_loss,
+                        epoch,
+                        optimizer.param_groups[0]["lr"],
+                        str(eta),
+                    )
+                )
                 images = images.to(self.device)
                 locations = locations.to(self.device)
                 labels = labels.to(self.device)
@@ -79,23 +102,22 @@ class Runner:
                 loss.backward()
                 optimizer.step()
                 losses.append(loss.item())
-                pbar.set_description(f"TRAIN | loss {loss.item():7.3f}")
+                log_step_losses.append(loss.item())
+                if global_step % self.config.RUNNER.LOG_STEP == 0:
+                    log_step_loss = np.average(log_step_losses)
+                    log_step_losses = []
+                if global_step % self.config.RUNNER.EVAL_STEP == 0:
+                    eval_step_loss = self.eval()
+                if global_step % self.config.RUNNER.CHECKPOINT_STEP == 0:
+                    self.checkpointer.save(
+                        f"{self.config.MODEL.BOX_PREDICTOR}"
+                        f"-{self.config.MODEL.BACKBONE}"
+                        f"_{self.config.DATA.DATASET}"
+                        f"-{epoch:04d}"
+                        f"-{global_step:05d}"
+                    )
             epoch_time = time.time() - epoch_start
             eta = (n_epochs - epoch) * timedelta(seconds=epoch_time)
-            logger.info(
-                " TRAIN | epoch: %4d | lr: %.5f | loss: %7.3f | eta: %s",
-                epoch,
-                optimizer.param_groups[0]["lr"],
-                np.average(losses),
-                str(eta),
-            )
-            self.eval()
-            self.checkpointer.save(
-                f"{self.config.MODEL.BOX_PREDICTOR}"
-                f"-{self.config.MODEL.BACKBONE}"
-                f"_{self.config.DATA.DATASET}"
-                f"-{epoch:04d}"
-            )
         total_time = timedelta(seconds=time.time() - start_time)
         logger.info(
             "Training finished. Total training time %s (%.3f s / epoch)",
@@ -103,7 +125,7 @@ class Runner:
             total_time.total_seconds() / n_epochs,
         )
 
-    def eval(self):
+    def eval(self) -> float:
         """Evaluate the model."""
         self.model.eval()
         data_loader = TestDataLoader(self.config)
@@ -123,7 +145,7 @@ class Runner:
                     gt_locations=locations,
                 )
             losses.append(loss.item())
-        logger.info("  EVAL | loss: %7.3f", np.average(losses))
+        return np.average(losses)
 
     def predict(
         self, inputs: torch.Tensor
