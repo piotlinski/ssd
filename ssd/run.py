@@ -5,6 +5,7 @@ from typing import List, Tuple
 
 import numpy as np
 import torch
+from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm, trange
 from yacs.config import CfgNode
 
@@ -39,6 +40,12 @@ class Runner:
             config.MODEL.CHECKPOINT_NAME if config.MODEL.CHECKPOINT_NAME else None
         )
 
+        self.tb_writer = (
+            SummaryWriter(comment=f"_{self.model_description}")
+            if config.RUNNER.USE_TENSORBOARD
+            else None
+        )
+
         self.model.to(self.device)
 
         self.criterion = MultiBoxLoss(config.MODEL.NEGATIVE_POSITIVE_RATIO)
@@ -60,10 +67,11 @@ class Runner:
         data_loader = TrainDataLoader(self.config)
 
         global_step = 0
-        log_step_losses = []
-        log_step_loss = float("nan")
+        losses = []
+        regression_losses = []
+        classification_losses = []
+        log_loss = float("nan")
         epoch_loss = float("nan")
-        loss_eval = float("nan")
 
         logger.info(
             "Starting training %s for %d epochs", self.model_description, n_epochs
@@ -83,7 +91,7 @@ class Runner:
                     data_loader,
                     desc=f"epoch {epoch:4d}",
                     unit="step",
-                    postfix=dict(loss=log_step_loss, eval_loss=loss_eval),
+                    postfix=dict(loss=log_loss),
                 ) as step_pbar:
                     for images, locations, labels in step_pbar:
                         global_step += 1
@@ -105,15 +113,44 @@ class Runner:
                         optimizer.step()
 
                         epoch_losses.append(loss.item())
-                        log_step_losses.append(loss.item())
+                        losses.append(loss.item())
+
+                        regression_losses.append(regression_loss.item())
+                        classification_losses.append(classification_loss.item())
 
                         if global_step % self.config.RUNNER.LOG_STEP == 0:
-                            log_step_loss = np.round(np.average(log_step_losses), 3)
-                            log_step_losses = []
-                            epoch_loss = np.round(np.average(epoch_losses), 3)
+                            log_loss = np.average(losses)
+                            log_regression_loss = np.average(regression_losses)
+                            log_classification_loss = np.average(classification_losses)
+                            losses = []
+                            regression_losses = []
+                            classification_losses = []
+                            epoch_loss = np.average(epoch_losses)
+
+                            if self.tb_writer is not None:
+                                self.tb_writer.add_scalar(
+                                    tag="loss/total/train",
+                                    scalar_value=log_loss,
+                                    global_step=global_step,
+                                )
+                                self.tb_writer.add_scalar(
+                                    tag="loss/regression/train",
+                                    scalar_value=log_regression_loss,
+                                    global_step=global_step,
+                                )
+                                self.tb_writer.add_scalar(
+                                    tag="loss/classification/train",
+                                    scalar_value=log_classification_loss,
+                                    global_step=global_step,
+                                )
+                                self.tb_writer.add_scalar(
+                                    tag="lr",
+                                    scalar_value=optimizer.param_groups[0]["lr"],
+                                    global_step=global_step,
+                                )
 
                         if global_step % self.config.RUNNER.EVAL_STEP == 0:
-                            loss_eval = np.round(self.eval(), 3)
+                            self.eval(global_step=global_step)
                             self.model.train()
 
                         if global_step % self.config.RUNNER.CHECKPOINT_STEP == 0:
@@ -124,14 +161,16 @@ class Runner:
                             )
 
                         epoch_pbar.set_postfix(step=global_step, loss=epoch_loss)
-                        step_pbar.set_postfix(loss=log_step_loss, loss_eval=loss_eval)
+                        step_pbar.set_postfix(loss=log_loss)
 
         logger.info("Training finished")
 
-    def eval(self) -> float:
+    def eval(self, global_step: int = 0):
         """Evaluate the model."""
         self.model.eval()
         data_loader = TestDataLoader(self.config)
+        regression_losses = []
+        classification_losses = []
         losses = []
         for images, locations, labels in data_loader:
             images = images.to(self.device)
@@ -148,8 +187,26 @@ class Runner:
                     gt_locations=locations,
                 )
                 loss = regression_loss + classification_loss
+            regression_losses.append(regression_loss.item())
+            classification_losses.append(classification_loss.item())
             losses.append(loss.item())
-        return np.average(losses)
+
+        if self.tb_writer is not None:
+            self.tb_writer.add_scalar(
+                tag="loss/total/eval",
+                scalar_value=np.average(losses),
+                global_step=global_step,
+            )
+            self.tb_writer.add_scalar(
+                tag="loss/regression/eval",
+                scalar_value=np.average(regression_losses),
+                global_step=global_step,
+            )
+            self.tb_writer.add_scalar(
+                tag="loss/classification/eval",
+                scalar_value=np.average(classification_losses),
+                global_step=global_step,
+            )
 
     def predict(
         self, inputs: torch.Tensor

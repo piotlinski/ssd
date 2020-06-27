@@ -216,3 +216,6 @@ models/*
 
 # checkpoints dir
 checkpoints/*
+
+# runs dir
+runs/*
