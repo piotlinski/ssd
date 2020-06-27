@@ -1,13 +1,11 @@
 """SSD running utils."""
 import logging
-import time
-from datetime import timedelta
 from multiprocessing import Pool
 from typing import List, Tuple
 
 import numpy as np
 import torch
-from tqdm.auto import tqdm
+from tqdm.auto import tqdm, trange
 from yacs.config import CfgNode
 
 from ssd.data.loaders import TestDataLoader, TrainDataLoader
@@ -54,66 +52,74 @@ class Runner:
         n_epochs = self.config.RUNNER.EPOCHS
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.RUNNER.LR)
         data_loader = TrainDataLoader(self.config)
-        start_time = time.time()
+
         global_step = 0
         log_step_losses = []
-        eta = "unknown"
+        log_step_loss = float("nan")
+        epoch_loss = float("nan")
+        loss_eval = float("nan")
+
         logger.info("Starting training for %d epochs", n_epochs)
-        for epoch in range(n_epochs):
-            losses = []
-            epoch += 1
-            epoch_start = time.time()
-            for images, locations, labels in tqdm(
-                data_loader, desc=f"EPOCH {epoch}", unit="step", postfix=f"ETA: {eta}"
-            ):
-                global_step += 1
-                images = images.to(self.device)
-                locations = locations.to(self.device)
-                labels = labels.to(self.device)
 
-                cls_logits, bbox_pred = self.model(images)
+        with trange(
+            n_epochs,
+            desc="  TRAINING",
+            unit="epoch",
+            postfix=dict(step=global_step, loss=epoch_loss),
+        ) as epoch_pbar:
+            for epoch in epoch_pbar:
+                epoch_losses = []
+                epoch += 1
 
-                loss = self.criterion(
-                    confidence=cls_logits,
-                    predicted_locations=bbox_pred,
-                    labels=labels,
-                    gt_locations=locations,
-                )
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                losses.append(loss.item())
-                log_step_losses.append(loss.item())
-                if global_step % self.config.RUNNER.LOG_STEP == 0:
-                    tqdm.write(
-                        f"TRAIN"
-                        f" | step: {global_step:6d}"
-                        f" | loss: {np.average(log_step_losses):7.3f}"
-                    )
-                    log_step_losses = []
-                if global_step % self.config.RUNNER.EVAL_STEP == 0:
-                    tqdm.write(
-                        f"EVAL "
-                        f" | step: {global_step:6d}"
-                        f" | loss: {self.eval():7.3f}"
-                    )
-                    self.model.train()
-                if global_step % self.config.RUNNER.CHECKPOINT_STEP == 0:
-                    self.checkpointer.save(
-                        f"{self.config.MODEL.BOX_PREDICTOR}"
-                        f"-{self.config.MODEL.BACKBONE}"
-                        f"_{self.config.DATA.DATASET}"
-                        f"-{epoch:04d}"
-                        f"-{global_step:05d}"
-                    )
-            epoch_time = time.time() - epoch_start
-            eta = (n_epochs - epoch) * timedelta(seconds=epoch_time)
-        total_time = timedelta(seconds=time.time() - start_time)
-        logger.info(
-            "Training finished. Total training time %s (%.3f s / epoch)",
-            str(total_time),
-            total_time.total_seconds() / n_epochs,
-        )
+                with tqdm(
+                    data_loader,
+                    desc=f"epoch {epoch:4d}",
+                    unit="step",
+                    postfix=dict(loss=log_step_loss, eval_loss=loss_eval),
+                ) as step_pbar:
+                    for images, locations, labels in step_pbar:
+                        global_step += 1
+                        images = images.to(self.device)
+                        locations = locations.to(self.device)
+                        labels = labels.to(self.device)
+
+                        cls_logits, bbox_pred = self.model(images)
+
+                        loss = self.criterion(
+                            confidence=cls_logits,
+                            predicted_locations=bbox_pred,
+                            labels=labels,
+                            gt_locations=locations,
+                        )
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()
+
+                        epoch_losses.append(loss.item())
+                        log_step_losses.append(loss.item())
+
+                        if global_step % self.config.RUNNER.LOG_STEP == 0:
+                            log_step_loss = np.round(np.average(log_step_losses), 3)
+                            log_step_losses = []
+                            epoch_loss = np.round(np.average(epoch_losses), 3)
+
+                        if global_step % self.config.RUNNER.EVAL_STEP == 0:
+                            loss_eval = np.round(self.eval(), 3)
+                            self.model.train()
+
+                        if global_step % self.config.RUNNER.CHECKPOINT_STEP == 0:
+                            self.checkpointer.save(
+                                f"{self.config.MODEL.BOX_PREDICTOR}"
+                                f"-{self.config.MODEL.BACKBONE}"
+                                f"_{self.config.DATA.DATASET}"
+                                f"-{epoch:04d}"
+                                f"-{global_step:05d}"
+                            )
+
+                        epoch_pbar.set_postfix(step=global_step, loss=epoch_loss)
+                        step_pbar.set_postfix(loss=log_step_loss, loss_eval=loss_eval)
+
+        logger.info("Training finished")
 
     def eval(self) -> float:
         """Evaluate the model."""
