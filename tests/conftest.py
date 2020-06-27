@@ -16,6 +16,7 @@ def sample_config() -> CfgNode:
     config.RUNNER.EPOCHS = 1
     config.RUNNER.BATCH_SIZE = 2
     config.MODEL.MAX_PER_IMAGE = 10
+    config.RUNNER.USE_TENSORBOARD = False
     return config
 
 
