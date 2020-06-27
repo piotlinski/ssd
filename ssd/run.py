@@ -28,6 +28,12 @@ class Runner:
         self.device = self.set_device()
         self.model = SSD(config)
 
+        self.model_description = (
+            f"{self.config.MODEL.BOX_PREDICTOR}"
+            f"-{self.config.MODEL.BACKBONE}"
+            f"_{self.config.DATA.DATASET}"
+        )
+
         self.checkpointer = CheckPointer(config=config, model=self.model)
         self.checkpointer.load(
             config.MODEL.CHECKPOINT_NAME if config.MODEL.CHECKPOINT_NAME else None
@@ -59,7 +65,9 @@ class Runner:
         epoch_loss = float("nan")
         loss_eval = float("nan")
 
-        logger.info("Starting training for %d epochs", n_epochs)
+        logger.info(
+            "Starting training %s for %d epochs", self.model_description, n_epochs
+        )
 
         with trange(
             n_epochs,
@@ -85,12 +93,13 @@ class Runner:
 
                         cls_logits, bbox_pred = self.model(images)
 
-                        loss = self.criterion(
+                        regression_loss, classification_loss = self.criterion(
                             confidence=cls_logits,
                             predicted_locations=bbox_pred,
                             labels=labels,
                             gt_locations=locations,
                         )
+                        loss = regression_loss + classification_loss
                         optimizer.zero_grad()
                         loss.backward()
                         optimizer.step()
@@ -109,9 +118,7 @@ class Runner:
 
                         if global_step % self.config.RUNNER.CHECKPOINT_STEP == 0:
                             self.checkpointer.save(
-                                f"{self.config.MODEL.BOX_PREDICTOR}"
-                                f"-{self.config.MODEL.BACKBONE}"
-                                f"_{self.config.DATA.DATASET}"
+                                f"{self.model_description}"
                                 f"-{epoch:04d}"
                                 f"-{global_step:05d}"
                             )
@@ -134,12 +141,13 @@ class Runner:
             with torch.no_grad():
                 cls_logits, bbox_pred = self.model(images)
 
-                loss = self.criterion(
+                regression_loss, classification_loss = self.criterion(
                     confidence=cls_logits,
                     predicted_locations=bbox_pred,
                     labels=labels,
                     gt_locations=locations,
                 )
+                loss = regression_loss + classification_loss
             losses.append(loss.item())
         return np.average(losses)
 
