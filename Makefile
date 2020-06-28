@@ -19,4 +19,4 @@ build: ## Build docker image
 gpu ?= 3
 ssd_args ?= --config-file config.yml train
 run: ## Run model
-	$(DOCKER_RUN) --gpus '"device=$(gpu)"' --shm-size 24G ssd_pz:latest $(ssd_args)
+	$(DOCKER_RUN) --gpus '"device=$(gpu)"' --shm-size 24G ssd:latest $(ssd_args)
