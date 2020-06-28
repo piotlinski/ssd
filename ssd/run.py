@@ -64,6 +64,9 @@ class Runner:
         self.model.train()
         n_epochs = self.config.RUNNER.EPOCHS
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.RUNNER.LR)
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, patience=self.config.RUNNER.LR_REDUCE_PATIENCE
+        )
         data_loader = TrainDataLoader(self.config)
 
         global_step = 0
@@ -72,6 +75,7 @@ class Runner:
         classification_losses = []
         log_loss = float("nan")
         epoch_loss = float("nan")
+        validation_loss = float("nan")
 
         logger.info(
             "Starting training %s for %d epochs", self.model_description, n_epochs
@@ -150,7 +154,7 @@ class Runner:
                                 )
 
                         if global_step % self.config.RUNNER.EVAL_STEP == 0:
-                            self.eval(global_step=global_step)
+                            validation_loss = self.eval(global_step=global_step)
                             self.model.train()
 
                         if global_step % self.config.RUNNER.CHECKPOINT_STEP == 0:
@@ -163,9 +167,15 @@ class Runner:
                         epoch_pbar.set_postfix(step=global_step, loss=epoch_loss)
                         step_pbar.set_postfix(loss=log_loss)
 
+                if (
+                    epoch > self.config.RUNNER.LR_REDUCE_SKIP_EPOCHS
+                    and validation_loss != float("nan")
+                ):
+                    lr_scheduler.step(validation_loss)
+
         logger.info("Training finished")
 
-    def eval(self, global_step: int = 0):
+    def eval(self, global_step: int = 0) -> float:
         """Evaluate the model."""
         self.model.eval()
         data_loader = TestDataLoader(self.config)
@@ -207,6 +217,8 @@ class Runner:
                 scalar_value=np.average(classification_losses),
                 global_step=global_step,
             )
+
+        return np.average(losses)
 
     def predict(
         self, inputs: torch.Tensor
