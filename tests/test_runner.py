@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 import torch
 
-from ssd.run import Runner
+from ssd.run import PlateauWarmUpLRScheduler, Runner
 
 
 def sample_data_loader():
@@ -24,6 +24,16 @@ def are_same(model_1, model_2):
         if parameter_1.data.ne(parameter_2.data).sum() > 0:
             return False
     return True
+
+
+@pytest.fixture
+def sample_optimizer():
+    """Return example optimizer."""
+    param_1 = torch.nn.Parameter(torch.arange(10, dtype=torch.float32))
+    param_2 = torch.nn.Parameter(torch.arange(10, dtype=torch.float32))
+    return torch.optim.SGD(
+        [{"params": [param_1]}, {"params": [param_2], "lr": 0.1}], lr=0.5
+    )
 
 
 @patch("ssd.run.CheckPointer")
@@ -99,3 +109,35 @@ def test_model_prediction(_checkpointer_mock, data_length, sample_config):
     assert boxes.shape == (sample_config.MODEL.MAX_PER_IMAGE, 4)
     assert scores.shape == (sample_config.MODEL.MAX_PER_IMAGE,)
     assert labels.shape == (sample_config.MODEL.MAX_PER_IMAGE,)
+
+
+@pytest.mark.parametrize(
+    "step, warmup_steps, expected",
+    [(1, 200, 0.01), (9, 100, 0.1), (29, 50, 0.6), (120, 50, 1.0)],
+)
+def test_lr_scheduler_factor(step, warmup_steps, expected):
+    """Verify calculating warmup factor."""
+    factor = PlateauWarmUpLRScheduler.linear_warmup_factor(
+        step=step, warmup_steps=warmup_steps
+    )
+    assert factor == expected
+
+
+def test_lr_scheduler_params(sample_optimizer):
+    """Verify defining LR scheduler."""
+    scheduler = PlateauWarmUpLRScheduler(optimizer=sample_optimizer, warmup_steps=5)
+    assert all(warmup_steps == 5 for warmup_steps in scheduler.warmup_params)
+
+
+def test_lr_warmup(sample_optimizer):
+    """Verify if LR is increased on warmup."""
+    scheduler = PlateauWarmUpLRScheduler(optimizer=sample_optimizer, warmup_steps=5)
+    for step in range(1, 10):
+        scheduler.dampen()
+        lr = [params["lr"] for params in sample_optimizer.param_groups]
+        if step < 6:
+            assert lr[0] == pytest.approx(0.5 * step / 5)
+            assert lr[1] == pytest.approx(0.1 * step / 5)
+        else:
+            assert lr[0] == pytest.approx(0.5)
+            assert lr[1] == pytest.approx(0.1)
