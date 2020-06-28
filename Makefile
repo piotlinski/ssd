@@ -14,7 +14,7 @@ shell: ## Run poetry shell
 	poetry shell
 
 build: ## Build docker image
-	bash -c 'read -sp "PyPI trasee_rd password: " && docker build --build-arg UID=`id -u $(USER)` --build-arg GID=`id -g $(USER)` -f Dockerfile -t ssd:latest .'
+	bash -c 'read -sp "PyPI trasee_rd password: " && docker build --build-arg PYPI_PASSWORD=$(REPLY) --build-arg UID=`id -u $(USER)` --build-arg GID=`id -g $(USER)` -f Dockerfile -t ssd:latest .'
 
 gpu ?= 3
 ssd_args ?= --config-file config.yml train
