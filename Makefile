@@ -1,3 +1,5 @@
+DOCKER_RUN := docker run -u `id -u $(USER)`:`id -g $(USER)` --rm -v $(shell pwd):/app
+
 help: ## Show this help
 	@grep -E '^[.a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
@@ -12,9 +14,9 @@ shell: ## Run poetry shell
 	poetry shell
 
 build: ## Build docker image
-	bash -c 'read -sp "PyPI trasee_rd password: " && docker build --build-arg PYPI_PASSWORD="$$REPLY" -f Dockerfile -t ssd:latest .'
+	bash -c 'read -sp "PyPI trasee_rd password: " && docker build --build-arg UID=`id -u $(USER)` --build-arg GID=`id -g $(USER)` -f Dockerfile -t ssd:latest .'
 
-docker_args ?= --gpus all  --volume $(shell pwd):/app --volume $(shell pwd)/data:/app/data --volume $(shell pwd)/models:/app/models
-ssd_args ?=
+gpu ?= 3
+ssd_args ?= --config-file config.yml train
 run: ## Run model
-	docker run  --rm $(docker_args) ssd:latest $(ssd_args)
+	$(DOCKER_RUN) --gpus '"device=$(gpu)"' --shm-size 24G ssd_pz:latest $(ssd_args)
