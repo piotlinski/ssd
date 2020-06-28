@@ -1,10 +1,12 @@
 """SSD running utils."""
 import logging
 from multiprocessing import Pool
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.optimizer import Optimizer
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm, trange
 from yacs.config import CfgNode
@@ -16,6 +18,45 @@ from ssd.modeling.checkpoint import CheckPointer
 from ssd.modeling.model import SSD, process_model_prediction
 
 logger = logging.getLogger(__name__)
+
+
+class PlateauWarmUpLRScheduler(ReduceLROnPlateau):
+    """LR Scheduler with warm-up and reducing on plateau."""
+
+    def __init__(self, optimizer: Optimizer, warmup_steps: int, *args, **kwargs):
+        """
+        :param optimizer: torch optimizer
+        :param warmup_steps: number of steps on which LR will be increased
+        """
+        super().__init__(optimizer=optimizer, *args, **kwargs)
+        self.warmup_params = [warmup_steps for _ in range(len(optimizer.param_groups))]
+        self.last_step = -1
+        self.target_lrs = [params["lr"] for params in optimizer.param_groups]
+
+    @staticmethod
+    def linear_warmup_factor(step: int, warmup_steps: int):
+        """ Get linear factor to multiply learning rate during warmup.
+
+        :param step: current step
+        :param warmup_steps: number of steps on which LR will be increased
+        :return: factor to multiply learning rate during warmup
+        """
+        return min(1.0, (step + 1) / warmup_steps)
+
+    def dampen(self, step: Optional[int] = None):
+        """ Dampen the learning rates.
+
+        :param step: current step (optional)
+        """
+        if step is None:
+            step = self.last_step + 1
+        self.last_step = step
+
+        for group, target_lr, warmup_steps in zip(
+            self.optimizer.param_groups, self.target_lrs, self.warmup_params
+        ):
+            factor = self.linear_warmup_factor(step, warmup_steps=warmup_steps)
+            group["lr"] = factor * target_lr
 
 
 class Runner:
@@ -64,8 +105,10 @@ class Runner:
         self.model.train()
         n_epochs = self.config.RUNNER.EPOCHS
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.RUNNER.LR)
-        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=self.config.RUNNER.LR_REDUCE_PATIENCE
+        lr_scheduler = PlateauWarmUpLRScheduler(
+            optimizer=optimizer,
+            patience=self.config.RUNNER.LR_REDUCE_PATIENCE,
+            warmup_steps=self.config.RUNNER.LR_WARMUP_STEPS,
         )
         data_loader = TrainDataLoader(self.config)
 
@@ -99,6 +142,7 @@ class Runner:
                 ) as step_pbar:
                     for images, locations, labels in step_pbar:
                         global_step += 1
+                        lr_scheduler.dampen()
                         images = images.to(self.device)
                         locations = locations.to(self.device)
                         labels = labels.to(self.device)
