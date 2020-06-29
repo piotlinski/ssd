@@ -10,12 +10,14 @@ from ssd.run import PlateauWarmUpLRScheduler, Runner
 
 def sample_data_loader():
     """Get mock data loader for testing."""
-    for _ in range(1):
-        yield (
+    return [
+        (
             torch.rand((2, 3, 300, 300)),
             torch.rand((2, 8732, 4)),
             torch.randint(0, 10, (2, 8732)),
         )
+        for _ in range(2)
+    ]
 
 
 def are_same(model_1, model_2):
