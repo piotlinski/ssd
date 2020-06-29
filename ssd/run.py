@@ -111,6 +111,7 @@ class Runner:
             warmup_steps=self.config.RUNNER.LR_WARMUP_STEPS,
         )
         data_loader = TrainDataLoader(self.config)
+        epoch_length = len(data_loader)
 
         global_step = 0
         losses = []
@@ -197,16 +198,18 @@ class Runner:
                                     global_step=global_step,
                                 )
 
-                        if global_step % self.config.RUNNER.EVAL_STEP == 0:
+                        if (
+                            global_step
+                            % (epoch_length // self.config.RUNNER.EVALS_PER_EPOCH)
+                            == 0
+                        ):
                             validation_loss = self.eval(global_step=global_step)
-                            self.model.train()
-
-                        if global_step % self.config.RUNNER.CHECKPOINT_STEP == 0:
                             self.checkpointer.save(
                                 f"{self.model_description}"
                                 f"-{epoch:04d}"
                                 f"-{global_step:05d}"
                             )
+                            self.model.train()
 
                         epoch_pbar.set_postfix(step=global_step, loss=epoch_loss)
                         step_pbar.set_postfix(loss=log_loss)
