@@ -1,5 +1,4 @@
 """Multi MNIST dataset."""
-from pathlib import Path
 from typing import Optional, Tuple
 
 import h5py
@@ -21,10 +20,7 @@ class MultiScaleMNIST(BaseDataset):
         h5_filename: str = "multiscalemnist.h5",
     ):
         super().__init__(
-            str(Path(data_dir).joinpath("mnist")),
-            data_transform,
-            target_transform,
-            subset,
+            data_dir, data_transform, target_transform, subset,
         )
         self.dataset_file = self.data_dir.joinpath(h5_filename)
         with h5py.File(self.dataset_file, "r") as file:

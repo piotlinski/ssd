@@ -12,32 +12,27 @@ from yacs.config import CfgNode
 logger = logging.getLogger(__name__)
 
 
-def cache_url(
-    url: str, model_dir: Optional[Path] = None, progress: bool = True
-) -> Path:
+def cache_url(url: str, pretrained_directory: str, progress: bool = True) -> Path:
     """ Loads the Torch serialized object at the given URL.
-    If the object is already present in `model_dir`, it's deserialized and
+    If the object is already present in `pretrained_dir`, it's deserialized and
     returned. The filename part of the URL should follow the naming convention
     ``filename-<sha256>.ext`` where ``<sha256>`` is the first eight or more
     digits of the SHA256 hash of the contents of the file. The hash is used to
     ensure unique names and to verify the contents of the file.
-    The default value of `model_dir` is ``$TORCH_HOME/models`` where
-    ``$TORCH_HOME`` defaults to ``~/.torch``. The default directory can be
-    overridden with the ``$TORCH_MODEL_ZOO`` environment variable.
     Example:
         >>> cached_file = cache_url(
-        >>>     'https://s3.amazonaws.com/pytorch/models/resnet18-5c106cde.pth'
+        >>>     'https://s3.amazonaws.com/pytorch/models/resnet18-5c106cde.pth',
+        >>>     'assets/pretrained',
         >>> )
 
     :param url: URL of object to download
-    :param model_dir: directory in which to save the object
+    :param pretrained_directory: directory in which to save the object
     :param progress: display a progressbar
     :return: Path to downloaded object
     """
-    if model_dir is None:
-        model_dir = Path(".").joinpath("models")
-    if not model_dir.exists():
-        model_dir.mkdir()
+    pretrained_dir = Path(pretrained_directory)
+    if not pretrained_dir.exists():
+        pretrained_dir.mkdir()
 
     parts = urlparse(url)
     filename = Path(parts.path).name
@@ -48,7 +43,7 @@ def cache_url(
         # so make the full path the filename by replacing / with _
         filename = parts.path.replace("/", "_")
 
-    cached_file = model_dir.joinpath(filename)
+    cached_file = pretrained_dir.joinpath(filename)
 
     if not cached_file.exists():
         logger.info("Downloading: '%s' to %s.", url, str(cached_file))
@@ -79,8 +74,8 @@ class CheckPointer:
         """
         self.config = config
         self.model = model
-        self.checkpoint_dir = Path(config.MODEL.CHECKPOINT_DIR)
-        self.checkpoint_dir.mkdir(exist_ok=True)
+        self.checkpoint_dir = Path(f"{config.ASSETS_DIR}/{config.MODEL.CHECKPOINT_DIR}")
+        self.checkpoint_dir.mkdir(exist_ok=True, parents=True)
         self.last_checkpoint_file = self.checkpoint_dir.joinpath(
             self._LAST_CHECKPOINT_FILENAME
         )
