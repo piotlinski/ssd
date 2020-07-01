@@ -46,7 +46,7 @@ class SSDTargetTransform:
         self.size_variance = config.MODEL.SIZE_VARIANCE
         self.iou_threshold = config.MODEL.IOU_THRESHOLD
         self.image_shape = config.DATA.SHAPE
-        self.single_class = config.DATA.N_CLASSES == 1
+        self.single_class = config.DATA.N_CLASSES == 2
 
     def __call__(
         self,

@@ -79,9 +79,6 @@ def onehot_labels(config: CfgNode, labels: torch.Tensor):
     :param labels: tensor of shape (batch_size x n_cells) with integers indicating class
     :return: tensor of shape (batch_size x n_cells x n_classes) with one-hot encodings
     """
-    if config.DATA.N_CLASSES > 1:
-        onehot = torch.zeros((*labels.shape[:2], config.DATA.N_CLASSES))
-        onehot.scatter_(-1, labels.unsqueeze(-1), 1.0)
-    else:
-        onehot = labels.unsqueeze(-1).float()
+    onehot = torch.zeros((*labels.shape[:2], config.DATA.N_CLASSES))
+    onehot.scatter_(-1, labels.unsqueeze(-1), 1.0)
     return onehot
