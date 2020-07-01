@@ -30,7 +30,7 @@ def plot_image(
     if ax is None:
         ax = plt.gca()
     ax.axis("off")
-    label_names = config.CLASSES_LABELS
+    label_names = config.DATA.CLASS_LABELS
     numpy_image = image.squeeze(0).numpy()
     ax.imshow(numpy_image, cmap="gray")
     if prediction is not None:
