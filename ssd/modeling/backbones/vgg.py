@@ -61,7 +61,12 @@ class VGG(nn.Module):
         self.l2_norm = L2Norm(512, scale=20)
         self.reset_params()
         if config.MODEL.PRETRAINED_URL:
-            self.init_pretrain(url=config.MODEL.PRETRAINED_URL)
+            self.init_pretrain(
+                url=config.MODEL.PRETRAINED_URL,
+                pretrained_directory=(
+                    f"{config.ASSETS_DIR}/{config.MODEL.PRETRAINED_DIR}"
+                ),
+            )
         else:
             self.init_xavier()
 
@@ -72,9 +77,9 @@ class VGG(nn.Module):
                 init.xavier_uniform_(module.weight)
                 init.zeros_(module.bias)
 
-    def init_pretrain(self, url: str):
+    def init_pretrain(self, url: str, pretrained_directory: str):
         """Initialize from a downloaded pretrained model."""
-        cached_file = cache_url(url)
+        cached_file = cache_url(url, pretrained_directory)
         state_dict = torch.load(cached_file, map_location="cpu")
         self.backbone.load_state_dict(state_dict)
 

@@ -19,7 +19,7 @@ def nn_module_mock() -> MagicMock:
 def test_default_folder_creation(mkdir_mock, exists_mock):
     """Verify if default folder is created."""
     exists_mock.side_effect = [False, True]
-    cache_url("test")
+    cache_url("test", "test_dir")
     mkdir_mock.assert_called()
 
 
@@ -30,9 +30,9 @@ def test_default_folder_creation(mkdir_mock, exists_mock):
 def test_downloading_model(download_mock, hash_regex_mock, _mkdir_mock, _exists_mock):
     """Check if appropriate file is downloaded."""
     hash_regex_mock.search = MagicMock(return_value=None)
-    cache_url("test")
+    cache_url("test", "test_dir")
     download_mock.assert_called_with(
-        "test", Path("./models/test"), hash_prefix=None, progress=True
+        "test", Path("test_dir/test"), hash_prefix=None, progress=True
     )
 
 
@@ -50,10 +50,10 @@ def test_handling_caffe_model(
     hash_regex_mock.search = search_mock
     search_mock.return_value.group.return_value = "12345"
 
-    cache_url("test")
+    cache_url("test", "test_dir")
     search_mock.return_value.group.assert_called_with(1)
     download_mock.assert_called_with(
-        "test", Path("./models/model_final.pkl"), hash_prefix=None, progress=True
+        "test", Path("test_dir/model_final.pkl"), hash_prefix=None, progress=True
     )
 
 
@@ -101,7 +101,11 @@ def test_saving(torch_save_mock, write_text_mock, nn_module_mock, sample_config)
     filename = "test"
     checkpointer = CheckPointer(config=sample_config, model=nn_module_mock)
     checkpointer.save(filename)
-    file = Path(sample_config.MODEL.CHECKPOINT_DIR).joinpath(f"{filename}.pth")
+    file = Path(
+        f"{sample_config.ASSETS_DIR}"
+        f"/{sample_config.MODEL.CHECKPOINT_DIR}"
+        f"/{filename}.pth"
+    )
     torch_save_mock.assert_called_with(nn_module_mock.state_dict(), file)
     write_text_mock.assert_called_with(str(file))
 

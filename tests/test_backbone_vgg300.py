@@ -44,7 +44,9 @@ def test_downloading_pretrained(
 ):
     sample_config.MODEL.PRETRAINED_URL = "test"
     VGG300(sample_config)
-    cache_url_mock.assert_called_with("test")
+    cache_url_mock.assert_called_with(
+        "test", f"{sample_config.ASSETS_DIR}/{sample_config.MODEL.PRETRAINED_DIR}"
+    )
     torch_load_mock.assert_called_with(cache_url_mock.return_value, map_location="cpu")
     load_state_dict_mock.assert_called_with(torch_load_mock.return_value)
 
