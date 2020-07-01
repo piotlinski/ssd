@@ -45,7 +45,9 @@ def evaluate(obj):
 def dataset(obj):
     """Group for dataset tools."""
     dataset_name = obj["config"].DATA.DATASET
-    obj["dataset"] = datasets[dataset_name](obj["config"].DATA.DIR, subset="train",)
+    obj["dataset"] = datasets[dataset_name](
+        f"{obj['config'].ASSETS_DIR}/{obj['config'].DATA.DATASET_DIR}", subset="train"
+    )
 
 
 @dataset.command(help="Get dataset statistics")

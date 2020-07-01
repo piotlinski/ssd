@@ -11,10 +11,12 @@ from ssd.modeling.box_predictors import box_predictors
 
 _C = CfgNode()
 
+_C.ASSETS_DIR = "assets"
+
 # data config
 _C.DATA = CfgNode()
 _C.DATA.DATASET = "MultiscaleMNIST"
-_C.DATA.DIR = "data"
+_C.DATA.DATASET_DIR = "data"
 _C.DATA.CHANNELS = 1
 _C.DATA.SHAPE = (300, 300)
 _C.DATA.N_CLASSES = 11
@@ -43,6 +45,7 @@ _C.MODEL = CfgNode()
 _C.MODEL.BATCH_NORM = True
 # "https://s3.amazonaws.com/amdegroot-models/vgg16_reducedfc.pth"
 _C.MODEL.PRETRAINED_URL = ""
+_C.MODEL.PRETRAINED_DIR = "pretrained"
 _C.MODEL.CHECKPOINT_DIR = "checkpoints"
 _C.MODEL.CHECKPOINT_NAME = ""
 _C.MODEL.BACKBONE = "VGG300"
@@ -69,6 +72,7 @@ _C.RUNNER.PIN_MEMORY = True
 _C.RUNNER.LOG_STEP = 10
 _C.RUNNER.EVALS_PER_EPOCH = 2
 _C.RUNNER.USE_TENSORBOARD = True
+_C.RUNNER.TENSORBOARD_DIR = "runs"
 _C.RUNNER.VIS_N_IMAGES = 4
 _C.RUNNER.VIS_CONFIDENCE_THRESHOLDS = (0.0, 0.25, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99)
 

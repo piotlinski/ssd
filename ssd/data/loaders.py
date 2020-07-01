@@ -29,7 +29,7 @@ class DefaultDataLoader(DataLoader):
     ):
         target_transform = SSDTargetTransform(config)
         dataset = datasets[config.DATA.DATASET](
-            config.DATA.DIR,
+            f"{config.ASSETS_DIR}/{config.DATA.DATASET_DIR}",
             data_transform=data_transform,
             target_transform=target_transform,
             subset=subset,
