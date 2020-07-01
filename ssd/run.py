@@ -81,11 +81,11 @@ class Runner:
             config.MODEL.CHECKPOINT_NAME if config.MODEL.CHECKPOINT_NAME else None
         )
 
-        self.tb_writer = (
-            SummaryWriter(comment=f"_{self.model_description}")
-            if config.RUNNER.USE_TENSORBOARD
-            else None
-        )
+        self.tb_writer = None
+        if config.RUNNER.USE_TENSORBOARD:
+            self.tb_writer = SummaryWriter(comment=f"_{self.model_description}")
+            inputs, *_ = next(iter(TestDataLoader(self.config)))
+            self.tb_writer.add_graph(self.model, inputs)
 
         self.model.to(self.device)
 
@@ -220,6 +220,8 @@ class Runner:
                 ):
                     lr_scheduler.step(validation_loss)
 
+        if self.tb_writer is not None:
+            self.tb_writer.add_graph(self.model, images)
         logger.info("Training finished")
 
     def eval(self, global_step: int = 0) -> float:
