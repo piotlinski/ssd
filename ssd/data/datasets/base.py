@@ -83,5 +83,5 @@ def onehot_labels(config: CfgNode, labels: torch.Tensor):
         onehot = torch.zeros((*labels.shape[:2], config.DATA.N_CLASSES))
         onehot.scatter_(-1, labels.unsqueeze(-1), 1.0)
     else:
-        onehot = labels.unsqueeze(-1)
+        onehot = labels.unsqueeze(-1).float()
     return onehot
