@@ -11,11 +11,13 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm, trange
 from yacs.config import CfgNode
 
+from ssd.data.datasets import onehot_labels
 from ssd.data.loaders import TestDataLoader, TrainDataLoader
 from ssd.data.transforms import DataTransform
 from ssd.loss import MultiBoxLoss
 from ssd.modeling.checkpoint import CheckPointer
 from ssd.modeling.model import SSD, process_model_prediction
+from ssd.visualize import plot_images_from_batch
 
 logger = logging.getLogger(__name__)
 
@@ -81,11 +83,11 @@ class Runner:
             config.MODEL.CHECKPOINT_NAME if config.MODEL.CHECKPOINT_NAME else None
         )
 
-        self.tb_writer = (
-            SummaryWriter(comment=f"_{self.model_description}")
-            if config.RUNNER.USE_TENSORBOARD
-            else None
-        )
+        self.tb_writer = None
+        if config.RUNNER.USE_TENSORBOARD:
+            self.tb_writer = SummaryWriter(comment=f"_{self.model_description}")
+            inputs, *_ = next(iter(TestDataLoader(self.config)))
+            self.tb_writer.add_graph(self.model, inputs)
 
         self.model.to(self.device)
 
@@ -178,17 +180,17 @@ class Runner:
 
                             if self.tb_writer is not None:
                                 self.tb_writer.add_scalar(
-                                    tag="loss/total/train",
+                                    tag="loss-total/train",
                                     scalar_value=log_loss,
                                     global_step=global_step,
                                 )
                                 self.tb_writer.add_scalar(
-                                    tag="loss/regression/train",
+                                    tag="loss-regression/train",
                                     scalar_value=log_regression_loss,
                                     global_step=global_step,
                                 )
                                 self.tb_writer.add_scalar(
-                                    tag="loss/classification/train",
+                                    tag="loss-classification/train",
                                     scalar_value=log_classification_loss,
                                     global_step=global_step,
                                 )
@@ -203,6 +205,21 @@ class Runner:
                             % (epoch_length // self.config.RUNNER.EVALS_PER_EPOCH)
                             == 0
                         ):
+                            if self.tb_writer is not None:
+                                self.tb_writer.add_figure(
+                                    tag="predictions/train",
+                                    figure=plot_images_from_batch(
+                                        self.config,
+                                        image_batch=images.cpu(),
+                                        pred_cls_logits=cls_logits.detach().cpu(),
+                                        pred_bbox_pred=bbox_pred.detach().cpu(),
+                                        gt_cls_logits=onehot_labels(
+                                            self.config, labels=labels.cpu()
+                                        ),
+                                        gt_bbox_pred=locations.cpu(),
+                                    ),
+                                    global_step=global_step,
+                                )
                             validation_loss = self.eval(global_step=global_step)
                             self.checkpointer.save(
                                 f"{self.model_description}"
@@ -220,6 +237,8 @@ class Runner:
                 ):
                     lr_scheduler.step(validation_loss)
 
+        if self.tb_writer is not None:
+            self.tb_writer.add_graph(self.model, images)
         logger.info("Training finished")
 
     def eval(self, global_step: int = 0) -> float:
@@ -250,18 +269,30 @@ class Runner:
 
         if self.tb_writer is not None:
             self.tb_writer.add_scalar(
-                tag="loss/total/eval",
+                tag="loss-total/eval",
                 scalar_value=np.average(losses),
                 global_step=global_step,
             )
             self.tb_writer.add_scalar(
-                tag="loss/regression/eval",
+                tag="loss-regression/eval",
                 scalar_value=np.average(regression_losses),
                 global_step=global_step,
             )
             self.tb_writer.add_scalar(
-                tag="loss/classification/eval",
+                tag="loss-classification/eval",
                 scalar_value=np.average(classification_losses),
+                global_step=global_step,
+            )
+            self.tb_writer.add_figure(
+                tag="predictions/eval",
+                figure=plot_images_from_batch(
+                    self.config,
+                    image_batch=images.cpu(),
+                    pred_cls_logits=cls_logits.cpu(),
+                    pred_bbox_pred=bbox_pred.cpu(),
+                    gt_cls_logits=onehot_labels(self.config, labels=labels.cpu()),
+                    gt_bbox_pred=locations.cpu(),
+                ),
                 global_step=global_step,
             )
 

@@ -96,7 +96,7 @@ def process_model_output(
         labels = labels.reshape(-1)
 
         # remove low scoring boxes
-        approved_mask = torch.nonzero(scores > confidence_threshold).squeeze(1)
+        approved_mask = (scores > confidence_threshold).nonzero().squeeze(1)
         boxes = boxes[approved_mask]
         scores = scores[approved_mask]
         labels = labels[approved_mask]
