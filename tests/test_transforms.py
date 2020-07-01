@@ -20,6 +20,21 @@ def test_ssd_target_transform(sample_config):
     assert labels.shape[0] == locations.shape[0]
 
 
+def test_single_class_ssd_target_transform(sample_config):
+    """Test single-class SSD target transform."""
+    sample_config.DATA.N_CLASSES = 1
+    transform = SSDTargetTransform(sample_config)
+    gt_boxes = np.array(
+        [[10.0, 30.0, 70.0, 70.0], [0.0, 0.0, 50.0, 50.0]], dtype=np.float32
+    )
+    gt_labels = np.array([1.0, 2.0], dtype=np.float32)
+
+    locations, labels = transform(gt_boxes, gt_labels)
+    assert locations.shape[-1] == 4
+    assert labels.shape[0] == locations.shape[0]
+    assert all(labels.unique() == torch.tensor([0.0, 1.0]))
+
+
 def test_data_transform(sample_config):
     """Test basic data transform."""
     transform = DataTransform(sample_config)
