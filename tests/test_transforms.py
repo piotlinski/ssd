@@ -22,7 +22,7 @@ def test_ssd_target_transform(sample_config):
 
 def test_single_class_ssd_target_transform(sample_config):
     """Test single-class SSD target transform."""
-    sample_config.DATA.N_CLASSES = 1
+    sample_config.DATA.N_CLASSES = 2
     transform = SSDTargetTransform(sample_config)
     gt_boxes = np.array(
         [[10.0, 30.0, 70.0, 70.0], [0.0, 0.0, 50.0, 50.0]], dtype=np.float32
