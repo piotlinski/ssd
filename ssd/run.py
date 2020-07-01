@@ -85,7 +85,12 @@ class Runner:
 
         self.tb_writer = None
         if config.RUNNER.USE_TENSORBOARD:
-            self.tb_writer = SummaryWriter(comment=f"_{self.model_description}")
+            self.tb_writer = SummaryWriter(
+                log_dir=(
+                    f"{self.config.ASSETS_DIR}/{self.config.RUNNER.TENSORBOARD_DIR}"
+                ),
+                comment=f"_{self.model_description}",
+            )
             inputs, *_ = next(iter(TestDataLoader(self.config)))
             self.tb_writer.add_graph(self.model, inputs)
 
