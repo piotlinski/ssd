@@ -27,6 +27,7 @@ def plot_image(
     fig, ax = plt.subplots(frameon=False)
     fig.tight_layout()
     ax.axis("off")
+    label_names = config.CLASSES_LABELS
     numpy_image = image.squeeze(0).numpy()
     ax.imshow(numpy_image, cmap="gray")
     if prediction is not None:
@@ -53,7 +54,7 @@ def plot_image(
             ax.text(
                 x1,
                 y2,
-                f"{label.item() - 1:.0f}: {score.item():.2f}",
+                f"{label_names[int(label.item() - 1)]}: {score.item():.2f}",
                 verticalalignment="top",
                 color="w",
                 fontsize="x-small",
