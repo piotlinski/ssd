@@ -27,7 +27,7 @@ def test_mnist_dataset_params(h5py_mock, sample_mnist_data):
     h5py_mock.return_value.__enter__.return_value = sample_mnist_data
     path = "."
     ds = MultiScaleMNIST(data_dir=path, subset="train", h5_filename="test")
-    assert ds.data_dir == Path(path).joinpath("mnist")
+    assert ds.data_dir == Path(path)
     assert ds.subset == "train"
     assert ds.dataset_file == ds.data_dir.joinpath("test")
     assert len(ds) == 5
