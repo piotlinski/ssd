@@ -46,6 +46,7 @@ class SSDTargetTransform:
         self.size_variance = config.MODEL.SIZE_VARIANCE
         self.iou_threshold = config.MODEL.IOU_THRESHOLD
         self.image_shape = config.DATA.SHAPE
+        self.single_class = config.DATA.N_CLASSES == 1
 
     def __call__(
         self,
@@ -69,6 +70,8 @@ class SSDTargetTransform:
             center_variance=self.center_variance,
             size_variance=self.size_variance,
         )
+        if self.single_class:
+            labels[labels > 0] = 1
         return locations, labels
 
 
