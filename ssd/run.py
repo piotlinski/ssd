@@ -178,17 +178,17 @@ class Runner:
 
                             if self.tb_writer is not None:
                                 self.tb_writer.add_scalar(
-                                    tag="loss/total/train",
+                                    tag="loss-total/train",
                                     scalar_value=log_loss,
                                     global_step=global_step,
                                 )
                                 self.tb_writer.add_scalar(
-                                    tag="loss/regression/train",
+                                    tag="loss-regression/train",
                                     scalar_value=log_regression_loss,
                                     global_step=global_step,
                                 )
                                 self.tb_writer.add_scalar(
-                                    tag="loss/classification/train",
+                                    tag="loss-classification/train",
                                     scalar_value=log_classification_loss,
                                     global_step=global_step,
                                 )
@@ -252,17 +252,17 @@ class Runner:
 
         if self.tb_writer is not None:
             self.tb_writer.add_scalar(
-                tag="loss/total/eval",
+                tag="loss-total/eval",
                 scalar_value=np.average(losses),
                 global_step=global_step,
             )
             self.tb_writer.add_scalar(
-                tag="loss/regression/eval",
+                tag="loss-regression/eval",
                 scalar_value=np.average(regression_losses),
                 global_step=global_step,
             )
             self.tb_writer.add_scalar(
-                tag="loss/classification/eval",
+                tag="loss-classification/eval",
                 scalar_value=np.average(classification_losses),
                 global_step=global_step,
             )
