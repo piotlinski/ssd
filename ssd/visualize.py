@@ -1,4 +1,5 @@
 """Visualization utils."""
+from random import shuffle
 from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -13,7 +14,8 @@ def plot_image(
     config: CfgNode,
     image: torch.tensor,
     prediction: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-    ground_truth: bool = False,
+    ax: Optional[plt.Axes] = None,
+    confidence_threshold: Optional[float] = None,
 ) -> plt.Axes:
     """ Plot an image with predicted bounding boxes.
 
@@ -21,23 +23,25 @@ def plot_image(
     :param image: Input image
     :param prediction: optional class logits and bbox predictions for the image
         (keep batch dimension as 1)
-    :param ground_truth: plotting ground truth (this modifies confidence threshold)
+    :param ax: optional axis to plot on
+    :param confidence_threshold: Optional confidence threshold to set
     :return: matplotlib axis with image and optional bounding boxes
     """
-    fig, ax = plt.subplots(frameon=False)
-    fig.tight_layout()
+    if ax is None:
+        ax = plt.gca()
     ax.axis("off")
+    label_names = config.CLASSES_LABELS
     numpy_image = image.squeeze(0).numpy()
     ax.imshow(numpy_image, cmap="gray")
     if prediction is not None:
         colors = plt.cm.get_cmap("Dark2")
         cls_logits, bbox_pred = prediction
         plot_config = config.clone()
-        if ground_truth:
+        if confidence_threshold is not None:
             plot_config.defrost()
-            plot_config.MODEL.CONFIDENCE_THRESHOLD = 0.1  # to filter repeated boxes
+            plot_config.MODEL.CONFIDENCE_THRESHOLD = confidence_threshold
         ((boxes, scores, labels),) = process_model_prediction(
-            plot_config, cls_logits, bbox_pred
+            plot_config, cls_logits.unsqueeze(0), bbox_pred.unsqueeze(0)
         )
         for box, score, label in zip(boxes, scores, labels):
             color = colors(label.item() / (config.DATA.N_CLASSES - 1))
@@ -53,7 +57,7 @@ def plot_image(
             ax.text(
                 x1,
                 y2,
-                f"{label.item() - 1:.0f}: {score.item():.2f}",
+                f"{label_names[int(label.item() - 1)]}: {score.item():.2f}",
                 verticalalignment="top",
                 color="w",
                 fontsize="x-small",
@@ -63,3 +67,52 @@ def plot_image(
             )
             ax.add_patch(rect)
     return ax
+
+
+def plot_images_from_batch(
+    config: CfgNode,
+    image_batch: torch.Tensor,
+    pred_cls_logits: torch.Tensor,
+    pred_bbox_pred: torch.Tensor,
+    gt_cls_logits: torch.Tensor,
+    gt_bbox_pred: torch.Tensor,
+) -> plt.Figure:
+    """ Randomly select images from batch and plot with varying confidence.
+
+    :param config: SSD config
+    :param image_batch: image batch
+    :param pred_cls_logits: predicted cls_logits
+    :param pred_bbox_pred: predicted bbox_pred
+    :param gt_cls_logits: ground truth cls_logits
+    :param gt_bbox_pred: ground truth bbox_pred
+    :return: figure with visualization
+    """
+    n_examples = config.RUNNER.VIS_N_IMAGES
+    indices = list(range(image_batch.shape[0]))
+    shuffle(indices)
+    confidence_thresholds = config.RUNNER.VIS_CONFIDENCE_THRESHOLDS
+    fig = plt.Figure(figsize=(4 * (len(confidence_thresholds) + 1), 4 * n_examples))
+    for idx, example_idx in enumerate(indices[:n_examples]):
+        subplot_idx = idx * (len(confidence_thresholds) + 1) + 1
+        ax = fig.add_subplot(n_examples, len(confidence_thresholds) + 1, subplot_idx)
+        plot_image(
+            config,
+            image=image_batch[example_idx],
+            prediction=(gt_cls_logits[example_idx], gt_bbox_pred[example_idx],),
+            ax=ax,
+            confidence_threshold=0.1,
+        )
+        ax.set_title("gt")
+        for conf_idx, conf in enumerate(confidence_thresholds, start=1):
+            ax = fig.add_subplot(
+                n_examples, len(confidence_thresholds) + 1, subplot_idx + conf_idx
+            )
+            plot_image(
+                config,
+                image=image_batch[example_idx],
+                prediction=(pred_cls_logits[example_idx], pred_bbox_pred[example_idx],),
+                ax=ax,
+                confidence_threshold=conf,
+            )
+            ax.set_title(f"thresh={conf}")
+    return fig

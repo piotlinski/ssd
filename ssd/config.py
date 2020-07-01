@@ -18,6 +18,7 @@ _C.DATA.DIR = "data"
 _C.DATA.CHANNELS = 1
 _C.DATA.SHAPE = (300, 300)
 _C.DATA.N_CLASSES = 11
+_C.CLASSES_LABELS = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
 _C.DATA.PIXEL_MEAN = (0.0,)
 _C.DATA.PIXEL_STD = (1.0,)
 # data prior config
@@ -68,6 +69,8 @@ _C.RUNNER.PIN_MEMORY = True
 _C.RUNNER.LOG_STEP = 10
 _C.RUNNER.EVALS_PER_EPOCH = 2
 _C.RUNNER.USE_TENSORBOARD = True
+_C.RUNNER.VIS_N_IMAGES = 4
+_C.RUNNER.VIS_CONFIDENCE_THRESHOLDS = (0.0, 0.25, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99)
 
 
 logger = logging.getLogger(__name__)
