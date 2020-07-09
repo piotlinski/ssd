@@ -1,6 +1,5 @@
 """Test VGG300 backbone."""
 from collections import Counter
-from unittest.mock import patch
 
 import pytest
 import torch
@@ -34,21 +33,6 @@ def test_l2norm(n_channels, scale):
     sample_data = torch.rand((1, n_channels, 4, 4))
 
     assert l2_norm(sample_data).shape == sample_data.shape
-
-
-@patch("ssd.modeling.backbones.vgg.nn.Module.load_state_dict")
-@patch("ssd.modeling.backbones.vgg.torch.load")
-@patch("ssd.modeling.backbones.vgg.cache_url")
-def test_downloading_pretrained(
-    cache_url_mock, torch_load_mock, load_state_dict_mock, sample_config
-):
-    sample_config.MODEL.PRETRAINED_URL = "test"
-    VGG300(sample_config)
-    cache_url_mock.assert_called_with(
-        "test", f"{sample_config.ASSETS_DIR}/{sample_config.MODEL.PRETRAINED_DIR}"
-    )
-    torch_load_mock.assert_called_with(cache_url_mock.return_value, map_location="cpu")
-    load_state_dict_mock.assert_called_with(torch_load_mock.return_value)
 
 
 @pytest.mark.parametrize("channels", [1, 3])
