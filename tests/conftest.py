@@ -9,10 +9,10 @@ from ssd.config import _C as cfg
 def sample_config() -> CfgNode:
     """Return sample config with default values."""
     config = cfg.clone()
+    config.MODEL.USE_PRETRAINED = False
     config.MODEL.PRETRAINED_URL = ""
     config.RUNNER.DEVICE = "cpu"
     config.DATA.DATASET = "MultiscaleMNIST"
-    config.DATA.CHANNELS = 3
     config.RUNNER.EPOCHS = 1
     config.RUNNER.BATCH_SIZE = 2
     config.MODEL.MAX_PER_IMAGE = 10
@@ -23,7 +23,7 @@ def sample_config() -> CfgNode:
 @pytest.fixture
 def sample_image(sample_config):
     """Sample torch image of correct shape."""
-    return torch.zeros((sample_config.DATA.CHANNELS, *sample_config.DATA.SHAPE))
+    return torch.zeros((3, *sample_config.DATA.SHAPE))
 
 
 @pytest.fixture
