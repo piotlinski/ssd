@@ -35,12 +35,10 @@ def test_l2norm(n_channels, scale):
     assert l2_norm(sample_data).shape == sample_data.shape
 
 
-@pytest.mark.parametrize("channels", [1, 3])
 @pytest.mark.parametrize("batch_norm", [True, False])
-def test_vgg300_defaults(batch_norm, channels, sample_config):
+def test_vgg300_defaults(batch_norm, sample_config):
     """Verify layers in VGG300 backbone."""
     sample_config.MODEL.BATCH_NORM = batch_norm
-    sample_config.DATA.CHANNELS = channels
     vgg = VGG300(sample_config)
     verify_vgg300_backbone(vgg.backbone, batch_norm=batch_norm)
 
@@ -48,13 +46,11 @@ def test_vgg300_defaults(batch_norm, channels, sample_config):
     assert all([isinstance(layer, nn.Conv2d) for layer in vgg.extras])
 
 
-@pytest.mark.parametrize("channels", [1, 3])
 @pytest.mark.parametrize("batch_norm", [True, False])
-def test_forward(batch_norm, channels, sample_config):
+def test_forward(batch_norm, sample_config):
     """Verify forward function in VGG300 backbone."""
     sample_config.MODEL.BATCH_NORM = batch_norm
-    sample_config.DATA.CHANNELS = channels
     vgg = VGG300(sample_config)
-    inputs = torch.rand((1, channels, 300, 300))
+    inputs = torch.rand((1, 3, 300, 300))
     outputs = vgg(inputs)
     assert len(outputs) == len(vgg.out_channels)
