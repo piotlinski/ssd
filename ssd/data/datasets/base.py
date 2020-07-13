@@ -63,8 +63,8 @@ class BaseDataset(data.Dataset):
         stds = []
         for idx in range(len(self)):
             image, *_ = self[idx]
-            mean = torch.mean(image, dim=(1, 2))
-            std = torch.std(image, dim=(1, 2))
+            mean = torch.mean(image, dim=(0, 1))
+            std = torch.std(image, dim=(0, 1))
             means.append(mean)
             stds.append(std)
         pixel_mean = torch.mean(torch.stack(means), dim=0).tolist()

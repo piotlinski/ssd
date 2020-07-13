@@ -86,7 +86,11 @@ class DataTransform:
         self.transforms = transforms
         default_transforms = [
             Resize(*config.DATA.SHAPE),
-            Normalize(mean=config.DATA.PIXEL_MEAN, std=config.DATA.PIXEL_STD,),
+            Normalize(
+                mean=config.DATA.PIXEL_MEAN,
+                std=config.DATA.PIXEL_STD,
+                max_pixel_value=1.0,
+            ),
             ToTensor(),
         ]
         self.transforms.extend(default_transforms)
