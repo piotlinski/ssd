@@ -17,12 +17,12 @@ _C.ASSETS_DIR = "assets"
 _C.DATA = CfgNode()
 _C.DATA.DATASET = "MultiscaleMNIST"
 _C.DATA.DATASET_DIR = "data"
-_C.DATA.CHANNELS = 1
 _C.DATA.SHAPE = (300, 300)
 _C.DATA.N_CLASSES = 11
 _C.DATA.CLASS_LABELS = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
-_C.DATA.PIXEL_MEAN = (0.0,)
-_C.DATA.PIXEL_STD = (1.0,)
+_C.DATA.PIXEL_MEAN = (0.485, 0.456, 0.406)
+_C.DATA.PIXEL_STD = (0.229, 0.224, 0.225)
+_C.DATA.AUGMENT_COLORS = False
 # data prior config
 _C.DATA.PRIOR = CfgNode()
 _C.DATA.PRIOR.BOXES_PER_LOC = (4, 6, 6, 6, 4, 4)
@@ -44,6 +44,7 @@ _C.DATA.PRIOR.CLIP = True
 _C.MODEL = CfgNode()
 _C.MODEL.BATCH_NORM = True
 # "https://s3.amazonaws.com/amdegroot-models/vgg16_reducedfc.pth"
+_C.MODEL.USE_PRETRAINED = False
 _C.MODEL.PRETRAINED_URL = ""
 _C.MODEL.PRETRAINED_DIR = "pretrained"
 _C.MODEL.CHECKPOINT_DIR = "checkpoints"

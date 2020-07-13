@@ -1,6 +1,5 @@
 """Test VGG300 backbone."""
 from collections import Counter
-from unittest.mock import patch
 
 import pytest
 import torch
@@ -36,27 +35,10 @@ def test_l2norm(n_channels, scale):
     assert l2_norm(sample_data).shape == sample_data.shape
 
 
-@patch("ssd.modeling.backbones.vgg.nn.Module.load_state_dict")
-@patch("ssd.modeling.backbones.vgg.torch.load")
-@patch("ssd.modeling.backbones.vgg.cache_url")
-def test_downloading_pretrained(
-    cache_url_mock, torch_load_mock, load_state_dict_mock, sample_config
-):
-    sample_config.MODEL.PRETRAINED_URL = "test"
-    VGG300(sample_config)
-    cache_url_mock.assert_called_with(
-        "test", f"{sample_config.ASSETS_DIR}/{sample_config.MODEL.PRETRAINED_DIR}"
-    )
-    torch_load_mock.assert_called_with(cache_url_mock.return_value, map_location="cpu")
-    load_state_dict_mock.assert_called_with(torch_load_mock.return_value)
-
-
-@pytest.mark.parametrize("channels", [1, 3])
 @pytest.mark.parametrize("batch_norm", [True, False])
-def test_vgg300_defaults(batch_norm, channels, sample_config):
+def test_vgg300_defaults(batch_norm, sample_config):
     """Verify layers in VGG300 backbone."""
     sample_config.MODEL.BATCH_NORM = batch_norm
-    sample_config.DATA.CHANNELS = channels
     vgg = VGG300(sample_config)
     verify_vgg300_backbone(vgg.backbone, batch_norm=batch_norm)
 
@@ -64,13 +46,11 @@ def test_vgg300_defaults(batch_norm, channels, sample_config):
     assert all([isinstance(layer, nn.Conv2d) for layer in vgg.extras])
 
 
-@pytest.mark.parametrize("channels", [1, 3])
 @pytest.mark.parametrize("batch_norm", [True, False])
-def test_forward(batch_norm, channels, sample_config):
+def test_forward(batch_norm, sample_config):
     """Verify forward function in VGG300 backbone."""
     sample_config.MODEL.BATCH_NORM = batch_norm
-    sample_config.DATA.CHANNELS = channels
     vgg = VGG300(sample_config)
-    inputs = torch.rand((1, channels, 300, 300))
+    inputs = torch.rand((1, 3, 300, 300))
     outputs = vgg(inputs)
     assert len(outputs) == len(vgg.out_channels)
