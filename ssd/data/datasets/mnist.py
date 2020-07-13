@@ -38,7 +38,7 @@ class MultiScaleMNIST(BaseDataset):
 
     def _get_image(self, item: int) -> torch.Tensor:
         image = self.dataset["images"][item] / 255  # type: ignore
-        return torch.from_numpy(image).unsqueeze(0).float()
+        return torch.from_numpy(image).float()
 
     def _get_annotation(self, item: int) -> Tuple[torch.Tensor, torch.Tensor]:
         boxes = self.dataset["boxes"][item]  # type: ignore

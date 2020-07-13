@@ -100,7 +100,6 @@ class DataTransform:
         bboxes: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]:
-        image = image.permute(1, 2, 0)
         if bboxes is not None and labels is not None:
             augment = Compose(
                 self.transforms,
@@ -125,7 +124,7 @@ class TrainDataTransform(DataTransform):
 
     def __init__(self, config: CfgNode, flip: bool = False):
         transforms = []
-        if config.DATA.CHANNELS == 3:
+        if config.DATA.AUGMENT_COLORS:
             # noinspection PyTypeChecker
             color_transforms = [
                 HueSaturationValue(
