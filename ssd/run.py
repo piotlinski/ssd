@@ -69,6 +69,7 @@ class Runner:
         :param config: configuration object
         """
         self.config = config
+        torch.set_num_threads(self.config.RUNNER.NUM_WORKERS)
         self.device = self.set_device()
         self.model = SSD(config)
 
