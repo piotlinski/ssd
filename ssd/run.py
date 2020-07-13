@@ -91,8 +91,8 @@ class Runner:
                 ),
                 comment=f"_{self.model_description}",
             )
-            # inputs, *_ = next(iter(TestDataLoader(self.config)))
-            # self.tb_writer.add_graph(self.model, inputs)
+            inputs, *_ = next(iter(TestDataLoader(self.config)))
+            self.tb_writer.add_graph(self.model, inputs)
 
         self.model.to(self.device)
 
