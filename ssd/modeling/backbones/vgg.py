@@ -1,5 +1,5 @@
 """VGG backbone for SSD."""
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -34,11 +34,11 @@ class L2Norm(nn.Module):
         return self.weight.unsqueeze(0).unsqueeze(2).unsqueeze(3).expand_as(x) * x
 
 
-class VGG300(BaseBackbone):
-    """VGG16 with 300x300 input backbone."""
+class VGG(BaseBackbone):
+    """VGG16 backbone."""
 
-    def __init__(self, config: CfgNode):
-        super().__init__(config=config, out_channels=[512, 1024, 512, 256, 256, 256])
+    def __init__(self, config: CfgNode, out_channels: List[int]):
+        super().__init__(config=config, out_channels=out_channels)
         self.l2_norm = L2Norm(n_channels=512, scale=20)
 
     def _build_backbone(self) -> nn.Module:
@@ -52,19 +52,22 @@ class VGG300(BaseBackbone):
         else:
             backbone = vgg16(pretrained=torchvision_pretrained).features[:-1]
             backbone[16].ceil_mode = True
-
-        backbone.add_module("43", nn.MaxPool2d(kernel_size=3, stride=1, padding=1))
+        start_id = len(backbone)
         backbone.add_module(
-            "44",
+            f"{start_id}", nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
+        )
+        backbone.add_module(
+            f"{start_id + 1}",
             nn.Conv2d(
                 in_channels=512, out_channels=1024, kernel_size=3, padding=6, dilation=6
             ),
         )
-        backbone.add_module("45", nn.ReLU(inplace=True))
+        backbone.add_module(f"{start_id +2}", nn.ReLU(inplace=True))
         backbone.add_module(
-            "46", nn.Conv2d(in_channels=1024, out_channels=1024, kernel_size=1)
+            f"{start_id + 3}",
+            nn.Conv2d(in_channels=1024, out_channels=1024, kernel_size=1),
         )
-        backbone.add_module("47", nn.ReLU(inplace=True))
+        backbone.add_module(f"{start_id + 4}", nn.ReLU(inplace=True))
         if self.config.MODEL.USE_PRETRAINED and self.config.MODEL.PRETRAINED_URL:
             cached_file = cache_url(
                 self.config.MODEL.PRETRAINED_URL,
@@ -73,25 +76,6 @@ class VGG300(BaseBackbone):
             state_dict = torch.load(cached_file, map_location="cpu")
             backbone.load_state_dict(state_dict)
         return backbone
-
-    def _build_extras(self) -> nn.Module:
-        """Build VGG16 300x300 extras."""
-        layers = [
-            nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
-            nn.Conv2d(
-                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
-            ),
-            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
-            nn.Conv2d(
-                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
-            ),
-            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
-            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
-        ]
-        extras = nn.ModuleList(layers)
-        return extras
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Run data through VGG300 backbone."""
@@ -115,3 +99,65 @@ class VGG300(BaseBackbone):
                 features.append(x)  # each SSD feature
 
         return tuple(features)
+
+
+class VGG300(VGG):
+    """VGG16 with 300x300 input backbone."""
+
+    def __init__(self, config: CfgNode):
+        super().__init__(config=config, out_channels=[512, 1024, 512, 256, 256, 256])
+
+    def _build_extras(self) -> nn.Module:
+        """Build VGG16 300x300 extras."""
+        layers = [
+            nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
+            nn.Conv2d(
+                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
+        ]
+        extras = nn.ModuleList(layers)
+        return extras
+
+
+class VGG512(VGG):
+    """VGG16 with 512x512 input backbone."""
+
+    def __init__(self, config: CfgNode):
+        super().__init__(
+            config=config, out_channels=[512, 1024, 512, 256, 256, 256, 256]
+        )
+
+    def _build_extras(self) -> nn.Module:
+        """Build VGG16 300x300 extras."""
+        layers = [
+            nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
+            nn.Conv2d(
+                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1, stride=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=4, stride=1, padding=1
+            ),
+        ]
+        extras = nn.ModuleList(layers)
+        return extras
