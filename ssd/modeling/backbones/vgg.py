@@ -41,7 +41,7 @@ class VGG300(BaseBackbone):
         super().__init__(config=config, out_channels=[512, 1024, 512, 256, 256, 256])
         self.l2_norm = L2Norm(n_channels=512, scale=20)
 
-    def _build_backbone(self):
+    def _build_backbone(self) -> nn.Module:
         """Build VGG16 backbone."""
         torchvision_pretrained = (
             self.config.MODEL.USE_PRETRAINED and not self.config.MODEL.PRETRAINED_URL
@@ -74,7 +74,7 @@ class VGG300(BaseBackbone):
             backbone.load_state_dict(state_dict)
         return backbone
 
-    def _build_extras(self):
+    def _build_extras(self) -> nn.Module:
         """Build VGG16 300x300 extras."""
         layers = [
             nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),

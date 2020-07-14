@@ -8,7 +8,7 @@ from ssd.modeling.box_predictors.ssd import SSDBoxPredictor
 def test_ssd_predictor(sample_config):
     """Test SSD box predictor params."""
     output_channels_list = [4, 8, 4, 2]
-    predictor = SSDBoxPredictor(sample_config, output_channels_list, [1, 1, 1, 1])
+    predictor = SSDBoxPredictor(sample_config, output_channels_list)
     assert len(predictor.cls_headers) == 4
     assert len(predictor.reg_headers) == 4
     assert all([isinstance(layer, nn.Conv2d) for layer in predictor.cls_headers])
@@ -23,7 +23,7 @@ def test_ssd_predictor(sample_config):
 def test_ssd_predictor_forward(sample_config):
     """Test forwarding data through SSD box predictor."""
     inputs = torch.rand((1, 1, 4, 1, 1))
-    predictor = SSDBoxPredictor(sample_config, [4, 8, 4, 2], [1, 1, 1, 1])
+    predictor = SSDBoxPredictor(sample_config, [4, 8, 4, 2])
     class_output, bbox_output = predictor(inputs)
     assert class_output.shape[-1] == sample_config.DATA.N_CLASSES
     assert bbox_output.shape[-1] == 4
