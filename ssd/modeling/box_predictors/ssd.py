@@ -1,5 +1,5 @@
 """SSD box predictors."""
-from typing import Callable, Iterable, List, Tuple
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -9,58 +9,21 @@ from yacs.config import CfgNode
 class BoxPredictor(nn.Module):
     """Base class for box predictor."""
 
-    def __init__(
-        self,
-        config: CfgNode,
-        backbone_out_channels: List[int],
-        boxes_per_location: List[int],
-    ):
+    def __init__(self, config: CfgNode, backbone_out_channels: List[int]):
         super().__init__()
         self.backbone_out_channels = backbone_out_channels
         self.config = config
-        self.cls_headers = nn.ModuleList(
-            list(
-                self._headers(
-                    block=self.cls_block,
-                    boxes_per_location_list=boxes_per_location,
-                    out_channels_list=backbone_out_channels,
-                )
-            )
-        )
-        self.reg_headers = nn.ModuleList(
-            list(
-                self._headers(
-                    block=self.reg_block,
-                    boxes_per_location_list=boxes_per_location,
-                    out_channels_list=backbone_out_channels,
-                )
-            )
-        )
+        self.cls_headers = self._build_cls_headers()
+        self.reg_headers = self._build_reg_headers()
         self.reset_params()
 
-    @staticmethod
-    def _headers(
-        block: Callable[[int, int, int], nn.Module],
-        boxes_per_location_list: List[int],
-        out_channels_list: List[int],
-    ) -> Iterable[nn.Module]:
-        """Prepare single header"""
-        for level, (out_channels, boxes_per_location) in enumerate(
-            zip(out_channels_list, boxes_per_location_list)
-        ):
-            yield block(level, out_channels, boxes_per_location)
+    def _build_cls_headers(self) -> nn.ModuleList:
+        """Build class logits headers module."""
+        raise NotImplementedError()
 
-    def cls_block(
-        self, level: int, out_channels: int, boxes_per_location: int
-    ) -> nn.Module:
-        """Single class prediction block."""
-        raise NotImplementedError
-
-    def reg_block(
-        self, level: int, out_channels: int, boxes_per_location: int
-    ) -> nn.Module:
-        """Single bbox regression block."""
-        raise NotImplementedError
+    def _build_reg_headers(self) -> nn.ModuleList:
+        """Build bbox regression headers module."""
+        raise NotImplementedError()
 
     def reset_params(self):
         """Initialize model params."""
@@ -92,26 +55,34 @@ class BoxPredictor(nn.Module):
 class SSDBoxPredictor(BoxPredictor):
     """SSD Box Predictor."""
 
-    def cls_block(
-        self, level: int, out_channels: int, boxes_per_location: int
-    ) -> nn.Module:
-        """SSD Box Predictor class block."""
-        return nn.Conv2d(
-            in_channels=out_channels,
-            out_channels=boxes_per_location * self.config.DATA.N_CLASSES,
-            kernel_size=3,
-            stride=1,
-            padding=1,
-        )
+    def _build_cls_headers(self) -> nn.ModuleList:
+        """Build SSD cls headers."""
+        layers = [
+            nn.Conv2d(
+                in_channels=channels,
+                out_channels=boxes * self.config.DATA.N_CLASSES,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+            )
+            for boxes, channels in zip(
+                self.config.DATA.PRIOR.BOXES_PER_LOC, self.backbone_out_channels
+            )
+        ]
+        return nn.ModuleList(layers)
 
-    def reg_block(
-        self, level: int, out_channels: int, boxes_per_location: int
-    ) -> nn.Module:
-        """SSD Box Predictor bbox block."""
-        return nn.Conv2d(
-            in_channels=out_channels,
-            out_channels=boxes_per_location * 4,
-            kernel_size=3,
-            stride=1,
-            padding=1,
-        )
+    def _build_reg_headers(self) -> nn.ModuleList:
+        """Build SSD bbox pred headers."""
+        layers = [
+            nn.Conv2d(
+                in_channels=channels,
+                out_channels=boxes * 4,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+            )
+            for boxes, channels in zip(
+                self.config.DATA.PRIOR.BOXES_PER_LOC, self.backbone_out_channels
+            )
+        ]
+        return nn.ModuleList(layers)
