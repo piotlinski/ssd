@@ -75,6 +75,11 @@ class VGG(BaseBackbone):
             )
             state_dict = torch.load(cached_file, map_location="cpu")
             backbone.load_state_dict(state_dict)
+        else:
+            for module in backbone[start_id:]:
+                if isinstance(module, nn.Conv2d):
+                    nn.init.xavier_uniform_(module.weight)
+                    nn.init.zeros_(module.bias)
         return backbone
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
@@ -136,7 +141,7 @@ class VGG512(VGG):
         )
 
     def _build_extras(self) -> nn.Module:
-        """Build VGG16 300x300 extras."""
+        """Build VGG16 512x512 extras."""
         layers = [
             nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
             nn.Conv2d(
