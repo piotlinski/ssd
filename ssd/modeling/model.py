@@ -21,9 +21,7 @@ class SSD(nn.Module):
         self.backbone = backbone(config)
         predictor = box_predictors[config.MODEL.BOX_PREDICTOR]
         self.predictor = predictor(
-            config,
-            backbone_out_channels=self.backbone.out_channels,
-            boxes_per_location=config.DATA.PRIOR.BOXES_PER_LOC,
+            config, backbone_out_channels=self.backbone.out_channels,
         )
 
     def forward(self, images):
