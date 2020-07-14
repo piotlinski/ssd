@@ -42,7 +42,7 @@ _C.DATA.PRIOR.CLIP = True
 
 # model config
 _C.MODEL = CfgNode()
-_C.MODEL.BATCH_NORM = True
+_C.MODEL.BATCH_NORM = False
 # "https://s3.amazonaws.com/amdegroot-models/vgg16_reducedfc.pth"
 _C.MODEL.USE_PRETRAINED = False
 _C.MODEL.PRETRAINED_URL = ""
