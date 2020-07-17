@@ -68,6 +68,6 @@ class TestDataLoader(DefaultDataLoader):
         super().__init__(
             data_transform,
             subset="test",
-            batch_size=2 * config.RUNNER.BATCH_SIZE,
+            batch_size=config.RUNNER.BATCH_SIZE,
             config=config,
         )
