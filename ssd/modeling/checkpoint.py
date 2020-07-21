@@ -74,7 +74,11 @@ class CheckPointer:
         """
         self.config = config
         self.model = model
-        self.checkpoint_dir = Path(f"{config.ASSETS_DIR}/{config.MODEL.CHECKPOINT_DIR}")
+        self.checkpoint_dir = Path(
+            f"{config.ASSETS_DIR}/"
+            f"{config.MODEL.CHECKPOINT_DIR}/"
+            f"{self.config.EXPERIMENT_NAME}_{self.config.CONFIG_STRING}"
+        )
         self.checkpoint_dir.mkdir(exist_ok=True, parents=True)
         self.last_checkpoint_file = self.checkpoint_dir.joinpath(
             self._LAST_CHECKPOINT_FILENAME
