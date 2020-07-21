@@ -19,6 +19,7 @@ h5py = "^2.10.0"
 tqdm = "^4.46.0"
 matplotlib = "^3.2.2"
 tensorboard = "^2.2.2"
+coolname = "^1.1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.1"

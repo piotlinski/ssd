@@ -73,12 +73,6 @@ class Runner:
         self.device = self.set_device()
         self.model = SSD(config)
 
-        self.model_description = (
-            f"{self.config.MODEL.BOX_PREDICTOR}"
-            f"-{self.config.MODEL.BACKBONE}"
-            f"_{self.config.DATA.DATASET}"
-        )
-
         self.checkpointer = CheckPointer(config=config, model=self.model)
         self.checkpointer.load(
             config.MODEL.CHECKPOINT_NAME if config.MODEL.CHECKPOINT_NAME else None
@@ -88,9 +82,10 @@ class Runner:
         if config.RUNNER.USE_TENSORBOARD:
             self.tb_writer = SummaryWriter(
                 log_dir=(
-                    f"{self.config.ASSETS_DIR}/{self.config.RUNNER.TENSORBOARD_DIR}"
-                ),
-                comment=f"_{self.model_description}",
+                    f"{self.config.ASSETS_DIR}/"
+                    f"{self.config.RUNNER.TENSORBOARD_DIR}/"
+                    f"{self.config.EXPERIMENT_NAME}_{self.config.CONFIG_STRING}"
+                )
             )
             inputs, *_ = next(iter(TestDataLoader(self.config)))
             self.tb_writer.add_graph(self.model, inputs)
@@ -130,7 +125,9 @@ class Runner:
         validation_loss = float("nan")
 
         logger.info(
-            "Starting training %s for %d epochs", self.model_description, n_epochs
+            "Starting training %s for %d epochs",
+            f"{self.config.EXPERIMENT_NAME}_{self.config.CONFIG_STRING}",
+            n_epochs,
         )
 
         with trange(
@@ -228,7 +225,8 @@ class Runner:
                                 )
                             validation_loss = self.eval(global_step=global_step)
                             self.checkpointer.save(
-                                f"{self.model_description}"
+                                f"{self.config.EXPERIMENT_NAME}"
+                                f"_{self.config.CONFIG_STRING}"
                                 f"-{epoch:04d}"
                                 f"-{global_step:05d}"
                             )
