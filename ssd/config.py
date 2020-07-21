@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from coolname import generate_slug
 from yacs.config import CfgNode
 
 from ssd.data.datasets import datasets
@@ -77,6 +78,10 @@ _C.RUNNER.TENSORBOARD_DIR = "runs"
 _C.RUNNER.VIS_N_IMAGES = 4
 _C.RUNNER.VIS_CONFIDENCE_THRESHOLDS = (0.0, 0.25, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99)
 
+# run name
+_C.EXPERIMENT_NAME = generate_slug(2)
+_C.CONFIG_STRING = f"{_C.MODEL.BOX_PREDICTOR}-{_C.MODEL.BACKBONE}_{_C.DATA.DATASET}"
+
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +116,7 @@ def get_config(config_file: Optional[str] = None, **kwargs) -> CfgNode:
         config_path = Path(config_file)
         if config_path.exists():
             config.merge_from_file(config_file)
+            config.EXPERIMENT_NAME = config_path.stem
         else:
             logger.warning("File %s does not exist.", config_file)
     config.update(**kwargs)

@@ -104,6 +104,7 @@ def test_saving(torch_save_mock, write_text_mock, nn_module_mock, sample_config)
     file = Path(
         f"{sample_config.ASSETS_DIR}"
         f"/{sample_config.MODEL.CHECKPOINT_DIR}"
+        f"/{sample_config.EXPERIMENT_NAME}_{sample_config.CONFIG_STRING}"
         f"/{filename}.pth"
     )
     torch_save_mock.assert_called_with(nn_module_mock.state_dict(), file)
