@@ -21,6 +21,7 @@ matplotlib = "^3.2.2"
 tensorboard = "^2.2.2"
 coolname = "^1.1.0"
 pycocotools = "^2.0.1"
+pillow = "^7.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.1"
