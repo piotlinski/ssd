@@ -123,6 +123,7 @@ def plot_images_from_batch(
                 config,
                 image=image,
                 prediction=(pred_cls_logits[example_idx], pred_bbox_pred[example_idx],),
+                data_loader=data_loader,
                 ax=ax,
                 confidence_threshold=conf,
             )
