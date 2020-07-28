@@ -7,7 +7,6 @@ import torch
 from matplotlib import patches
 from yacs.config import CfgNode
 
-from ssd.data.loaders import DefaultDataLoader
 from ssd.modeling.model import process_model_prediction
 
 
@@ -15,7 +14,6 @@ def plot_image(
     config: CfgNode,
     image: torch.tensor,
     prediction: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-    data_loader: Optional[DefaultDataLoader] = None,
     ax: Optional[plt.Axes] = None,
     confidence_threshold: Optional[float] = None,
 ) -> plt.Axes:
@@ -25,7 +23,6 @@ def plot_image(
     :param image: Input image
     :param prediction: optional class logits and bbox predictions for the image
         (keep batch dimension as 1)
-    :param data_loader: optional data loader instance containing class labels
     :param ax: optional axis to plot on
     :param confidence_threshold: Optional confidence threshold to set
     :return: matplotlib axis with image and optional bounding boxes
@@ -33,12 +30,10 @@ def plot_image(
     if ax is None:
         ax = plt.gca()
     ax.axis("off")
+    label_names = config.DATA.CLASS_LABELS
     numpy_image = image.numpy()
     ax.imshow(numpy_image)
     if prediction is not None:
-        if data_loader is None:
-            raise AttributeError("Data loader must be provided.")
-        label_names = data_loader.CLASS_LABELS
         colors = plt.cm.get_cmap("Dark2")
         cls_logits, bbox_pred = prediction
         plot_config = config.clone()
@@ -81,7 +76,6 @@ def plot_images_from_batch(
     pred_bbox_pred: torch.Tensor,
     gt_cls_logits: torch.Tensor,
     gt_bbox_pred: torch.Tensor,
-    data_loader: DefaultDataLoader,
 ) -> plt.Figure:
     """ Randomly select images from batch and plot with varying confidence.
 
@@ -91,7 +85,6 @@ def plot_images_from_batch(
     :param pred_bbox_pred: predicted bbox_pred
     :param gt_cls_logits: ground truth cls_logits
     :param gt_bbox_pred: ground truth bbox_pred
-    :param data_loader: data loader for class labels
     :return: figure with visualization
     """
     n_examples = config.RUNNER.VIS_N_IMAGES
@@ -110,7 +103,6 @@ def plot_images_from_batch(
             config,
             image=image,
             prediction=(gt_cls_logits[example_idx], gt_bbox_pred[example_idx],),
-            data_loader=data_loader,
             ax=ax,
             confidence_threshold=0.1,
         )
@@ -123,7 +115,6 @@ def plot_images_from_batch(
                 config,
                 image=image,
                 prediction=(pred_cls_logits[example_idx], pred_bbox_pred[example_idx],),
-                data_loader=data_loader,
                 ax=ax,
                 confidence_threshold=conf,
             )
