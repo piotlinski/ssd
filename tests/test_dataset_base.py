@@ -15,6 +15,8 @@ def test_base_dataset_params():
     assert ds.data_dir == Path(path)
     assert ds.data_transform is None
     assert ds.target_transform is None
+    assert ds.CLASS_LABELS == []
+    assert ds.OBJECT_LABEL == ""
 
 
 @patch("ssd.data.datasets.base.BaseDataset.__len__", return_value=10)

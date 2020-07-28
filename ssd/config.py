@@ -80,7 +80,7 @@ _C.RUNNER.VIS_CONFIDENCE_THRESHOLDS = (0.0, 0.25, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99
 
 # run name
 _C.EXPERIMENT_NAME = generate_slug(2)
-_C.CONFIG_STRING = f"{_C.MODEL.BOX_PREDICTOR}-{_C.MODEL.BACKBONE}_{_C.DATA.DATASET}"
+_C.CONFIG_STRING = ""
 
 
 logger = logging.getLogger(__name__)
@@ -120,6 +120,9 @@ def get_config(config_file: Optional[str] = None, **kwargs) -> CfgNode:
         else:
             logger.warning("File %s does not exist.", config_file)
     config.update(**kwargs)
+    config.CONFIG_STRING = (
+        f"{config.MODEL.BOX_PREDICTOR}-{config.MODEL.BACKBONE}_{config.DATA.DATASET}"
+    )
     config.freeze()
     verify_config(config)
     return config
