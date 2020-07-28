@@ -220,6 +220,7 @@ class Runner:
                                             self.config, labels=labels.cpu()
                                         ),
                                         gt_bbox_pred=locations.cpu(),
+                                        data_loader=data_loader,
                                     ),
                                     global_step=global_step,
                                 )
@@ -296,6 +297,7 @@ class Runner:
                     pred_bbox_pred=bbox_pred.cpu(),
                     gt_cls_logits=onehot_labels(self.config, labels=labels.cpu()),
                     gt_bbox_pred=locations.cpu(),
+                    data_loader=data_loader,
                 ),
                 global_step=global_step,
             )

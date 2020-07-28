@@ -1,6 +1,6 @@
 """Base class for dataset."""
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import torch
 import torch.utils.data as data
@@ -18,6 +18,10 @@ TargetTransformType = Optional[
 
 
 class BaseDataset(data.Dataset):
+
+    CLASS_LABELS: List[str] = []
+    OBJECT_LABEL = ""
+
     def __init__(
         self,
         data_dir: str,
@@ -70,6 +74,11 @@ class BaseDataset(data.Dataset):
         pixel_mean = torch.mean(torch.stack(means), dim=0).tolist()
         pixel_std = torch.mean(torch.stack(stds), dim=0).tolist()
         return tuple(pixel_mean), tuple(pixel_std)
+
+    @classmethod
+    def download(cls, path: str):
+        """Download dataset files."""
+        raise NotImplementedError(f"{cls.__name__} does not implement downloading.")
 
 
 def onehot_labels(config: CfgNode, labels: torch.Tensor):
