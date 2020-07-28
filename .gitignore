@@ -206,6 +206,15 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+### Code ###
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
 # End of https://www.gitignore.io/api/python,pycharm+all,jupyternotebooks
 
 # assets dir

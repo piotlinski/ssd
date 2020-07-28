@@ -31,6 +31,8 @@ def test_mnist_dataset_params(h5py_mock, sample_mnist_data):
     assert ds.subset == "train"
     assert ds.dataset_file == ds.data_dir.joinpath("test")
     assert len(ds) == 5
+    assert len(ds.CLASS_LABELS) == 10
+    assert ds.OBJECT_LABEL
 
 
 @patch("ssd.data.datasets.mnist.h5py.File")

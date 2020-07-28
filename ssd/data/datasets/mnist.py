@@ -9,7 +9,10 @@ from ssd.data.datasets.base import BaseDataset, DataTransformType, TargetTransfo
 
 
 class MultiScaleMNIST(BaseDataset):
-    """Multi-scale MNIST dataset. Requires the """
+    """Multi-scale MNIST dataset."""
+
+    CLASS_LABELS = ["0", "1", "2", "3", "4", "5", "6", "7", "8" "9", "10"]
+    OBJECT_LABEL = "digit"
 
     def __init__(
         self,
@@ -19,9 +22,7 @@ class MultiScaleMNIST(BaseDataset):
         subset: str = "train",
         h5_filename: str = "multiscalemnist.h5",
     ):
-        super().__init__(
-            data_dir, data_transform, target_transform, subset,
-        )
+        super().__init__(data_dir, data_transform, target_transform, subset)
         self.dataset_file = self.data_dir.joinpath(h5_filename)
         with h5py.File(self.dataset_file, "r") as file:
             self.dataset_length = len(file[self.subset]["images"])

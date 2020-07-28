@@ -45,6 +45,11 @@ class DefaultDataLoader(DataLoader):
             pin_memory=config.RUNNER.PIN_MEMORY,
             collate_fn=collate,
         )
+        self.CLASS_LABELS = (
+            dataset.CLASS_LABELS
+            if config.DATA.N_CLASSES != 2
+            else [dataset.OBJECT_LABEL]
+        )
 
 
 class TrainDataLoader(DefaultDataLoader):
