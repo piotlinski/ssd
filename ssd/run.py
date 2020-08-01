@@ -112,7 +112,6 @@ class Runner:
             warmup_steps=self.config.RUNNER.LR_WARMUP_STEPS,
         )
         data_loader = TrainDataLoader(self.config)
-        epoch_length = len(data_loader)
 
         global_step = 0
         losses = []
@@ -137,6 +136,7 @@ class Runner:
             for epoch in epoch_pbar:
                 epoch_losses = []
                 epoch += 1
+                visualize = epoch % self.config.RUNNER.VIS_EPOCHS == 0
 
                 with tqdm(
                     data_loader,
@@ -201,37 +201,32 @@ class Runner:
                                     global_step=global_step,
                                 )
 
-                        if (
-                            global_step
-                            % (epoch_length // self.config.RUNNER.EVALS_PER_EPOCH)
-                            == 0
-                        ):
-                            if self.tb_writer is not None:
-                                self.tb_writer.add_figure(
-                                    tag="predictions/train",
-                                    figure=plot_images_from_batch(
-                                        self.config,
-                                        image_batch=images,
-                                        pred_cls_logits=cls_logits.detach(),
-                                        pred_bbox_pred=bbox_pred.detach(),
-                                        gt_cls_logits=onehot_labels(
-                                            self.config, labels=labels
-                                        ),
-                                        gt_bbox_pred=locations,
-                                    ),
-                                    global_step=global_step,
-                                )
-                            validation_loss = self.eval(global_step=global_step)
-                            self.checkpointer.save(
-                                f"{self.config.EXPERIMENT_NAME}"
-                                f"_{self.config.CONFIG_STRING}"
-                                f"-{epoch:04d}"
-                                f"-{global_step:05d}"
-                            )
-                            self.model.train()
-
                         epoch_pbar.set_postfix(step=global_step, loss=epoch_loss)
                         step_pbar.set_postfix(loss=log_loss)
+
+                if self.tb_writer is not None and visualize:
+                    self.tb_writer.add_figure(
+                        tag="predictions/train",
+                        figure=plot_images_from_batch(
+                            self.config,
+                            image_batch=images,
+                            pred_cls_logits=cls_logits.detach(),
+                            pred_bbox_pred=bbox_pred.detach(),
+                            gt_cls_logits=onehot_labels(self.config, labels=labels),
+                            gt_bbox_pred=locations,
+                        ),
+                        global_step=global_step,
+                    )
+                validation_loss = self.eval(
+                    global_step=global_step, visualize=visualize
+                )
+                self.checkpointer.save(
+                    f"{self.config.EXPERIMENT_NAME}"
+                    f"_{self.config.CONFIG_STRING}"
+                    f"-{epoch:04d}"
+                    f"-{global_step:05d}"
+                )
+                self.model.train()
 
                 if (
                     epoch > self.config.RUNNER.LR_REDUCE_SKIP_EPOCHS
@@ -243,7 +238,7 @@ class Runner:
             self.tb_writer.add_graph(self.model, images)
         logger.info("Training finished")
 
-    def eval(self, global_step: int = 0) -> float:
+    def eval(self, global_step: int = 0, visualize: bool = False) -> float:
         """Evaluate the model."""
         self.model.eval()
         data_loader = TestDataLoader(self.config)
@@ -293,18 +288,19 @@ class Runner:
                 scalar_value=np.average(classification_losses),
                 global_step=global_step,
             )
-            self.tb_writer.add_figure(
-                tag="predictions/eval",
-                figure=plot_images_from_batch(
-                    self.config,
-                    image_batch=images,
-                    pred_cls_logits=cls_logits,
-                    pred_bbox_pred=bbox_pred,
-                    gt_cls_logits=onehot_labels(self.config, labels=labels),
-                    gt_bbox_pred=locations,
-                ),
-                global_step=global_step,
-            )
+            if visualize:
+                self.tb_writer.add_figure(
+                    tag="predictions/eval",
+                    figure=plot_images_from_batch(
+                        self.config,
+                        image_batch=images,
+                        pred_cls_logits=cls_logits,
+                        pred_bbox_pred=bbox_pred,
+                        gt_cls_logits=onehot_labels(self.config, labels=labels),
+                        gt_bbox_pred=locations,
+                    ),
+                    global_step=global_step,
+                )
 
         return np.average(losses)
 
