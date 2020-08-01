@@ -1,15 +1,18 @@
 """SSD model."""
+import logging
 from typing import Iterable, List, Tuple
 
 import torch
 import torch.nn as nn
-from torchvision.ops import nms
+from torchvision.ops.boxes import batched_nms
 from yacs.config import CfgNode
 
 from ssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
 from ssd.data.priors import process_prior
 from ssd.modeling.backbones import backbones
 from ssd.modeling.box_predictors import box_predictors
+
+logger = logging.getLogger(__name__)
 
 
 class SSD(nn.Module):
@@ -28,30 +31,6 @@ class SSD(nn.Module):
         features = self.backbone(images)
         predictions = self.predictor(features)
         return predictions
-
-
-def non_max_suppression(
-    boxes: torch.Tensor, scores: torch.Tensor, indices: torch.Tensor, threshold: float
-) -> torch.Tensor:
-    """ Perform non-maximum suppression.
-
-    ..  strategy: in order to perform NMS independently per class. We add an offset to
-        all the boxes. The offset is dependent only on the class idx, and is large
-        enough so that boxes from different classes do not overlap
-
-    :param boxes: (N, 4) boxes where NMS will be performed. They are expected to be in
-        (x1, y1, x2, y2) format
-    :param scores: (N) scores for each one of the boxes
-    :param indices: (N) indices of the categories for each one of the boxes
-    :param threshold: IoU threshold for discarding overlapping boxes
-    :return: mask of indices kept
-    """
-    if boxes.numel() == 0:
-        return torch.empty((0,), dtype=torch.int64, device=boxes.device)
-    max_coord = boxes.max()
-    offsets = indices.to(boxes) * (max_coord + 1)
-    nms_boxes = boxes + offsets[:, None]
-    return nms(boxes=nms_boxes, scores=scores, iou_threshold=threshold)
 
 
 def process_model_output(
@@ -103,9 +82,19 @@ def process_model_output(
         boxes[:, 0::2] *= width
         boxes[:, 1::2] *= height
 
-        keep_mask = non_max_suppression(
-            boxes=boxes, scores=scores, indices=labels, threshold=nms_threshold,
-        )
+        # as of torchvision 0.6.0, cuda nms is broken (int overflow)
+        try:
+            keep_mask = batched_nms(
+                boxes=boxes, scores=scores, idxs=labels, iou_threshold=nms_threshold,
+            )
+        except RuntimeError:
+            logger.warning("Torchvision NMS CUDA int overflow. Falling back to CPU.")
+            keep_mask = batched_nms(
+                boxes=boxes.cpu(),
+                scores=scores.cpu(),
+                idxs=labels.cpu(),
+                iou_threshold=nms_threshold,
+            )
         # keep only top scoring predictions
         keep_mask = keep_mask[:max_per_image]
         boxes = boxes[keep_mask]
@@ -133,7 +122,7 @@ def process_model_prediction(
         strides=config.DATA.PRIOR.STRIDES,
         aspect_ratios=config.DATA.PRIOR.ASPECT_RATIOS,
         clip=config.DATA.PRIOR.CLIP,
-    )
+    ).to(cls_logits.device)
     scores = nn.functional.softmax(cls_logits, dim=2)
     boxes = convert_locations_to_boxes(
         locations=bbox_pred,

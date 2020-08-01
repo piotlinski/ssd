@@ -31,7 +31,7 @@ def plot_image(
         ax = plt.gca()
     ax.axis("off")
     label_names = config.DATA.CLASS_LABELS
-    numpy_image = image.numpy()
+    numpy_image = image.cpu().numpy()
     ax.imshow(numpy_image)
     if prediction is not None:
         colors = plt.cm.get_cmap("Dark2")
@@ -94,8 +94,12 @@ def plot_images_from_batch(
     fig = plt.Figure(figsize=(4 * (len(confidence_thresholds) + 1), 4 * n_examples))
     for idx, example_idx in enumerate(indices[:n_examples]):
         image = image_batch[example_idx].permute(1, 2, 0)
-        denominator = torch.reciprocal(torch.tensor(config.DATA.PIXEL_STD))
-        image = image / denominator + torch.tensor(config.DATA.PIXEL_MEAN)
+        denominator = torch.reciprocal(
+            torch.tensor(config.DATA.PIXEL_STD, device=image.device)
+        )
+        image = image / denominator + torch.tensor(
+            config.DATA.PIXEL_MEAN, device=image.device
+        )
         image.clamp_(min=0, max=1)
         subplot_idx = idx * (len(confidence_thresholds) + 1) + 1
         ax = fig.add_subplot(n_examples, len(confidence_thresholds) + 1, subplot_idx)

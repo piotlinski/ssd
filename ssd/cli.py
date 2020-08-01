@@ -44,21 +44,25 @@ def evaluate(obj):
 @click.pass_obj
 def dataset(obj):
     """Group for dataset tools."""
-    dataset_name = obj["config"].DATA.DATASET
-    obj["dataset"] = datasets[dataset_name](
-        f"{obj['config'].ASSETS_DIR}/{obj['config'].DATA.DATASET_DIR}", subset="train"
-    )
+    obj["dataset"] = datasets[obj["config"].DATA.DATASET]
 
 
 @dataset.command(help="Get dataset statistics")
 @click.pass_obj
 def stats(obj):
     """Calculate dataset pixel mean and std."""
-    pixel_mean, pixel_std = obj["dataset"].pixel_mean_std()
+    ds = obj["dataset"](
+        f"{obj['config'].ASSETS_DIR}/{obj['config'].DATA.DATASET_DIR}", subset="train"
+    )
+    pixel_mean, pixel_std = ds.pixel_mean_std()
     click.echo("Dataset: %s" % obj["config"].DATA.DATASET)
     click.echo("Pixel mean: %s" % str(pixel_mean))
     click.echo("Pixel std: %s" % str(pixel_std))
 
 
-if __name__ == "__main__":
-    main()
+@dataset.command(help="Download the dataset.")
+@click.pass_obj
+def download(obj):
+    """Download dataset."""
+    download_dir = f"{obj['config'].ASSETS_DIR}/{obj['config'].DATA.DATASET_DIR}"
+    obj["dataset"].download(path=download_dir)
