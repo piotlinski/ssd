@@ -88,6 +88,8 @@ def onehot_labels(config: CfgNode, labels: torch.Tensor):
     :param labels: tensor of shape (batch_size x n_cells) with integers indicating class
     :return: tensor of shape (batch_size x n_cells x n_classes) with one-hot encodings
     """
-    onehot = torch.zeros((*labels.shape[:2], config.DATA.N_CLASSES))
+    onehot = torch.zeros(
+        (*labels.shape[:2], config.DATA.N_CLASSES), device=labels.device
+    )
     onehot.scatter_(-1, labels.unsqueeze(-1), 1.0)
     return onehot
