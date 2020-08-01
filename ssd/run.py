@@ -87,8 +87,6 @@ class Runner:
                     f"{self.config.EXPERIMENT_NAME}_{self.config.CONFIG_STRING}"
                 )
             )
-            inputs, *_ = next(iter(TestDataLoader(self.config)))
-            self.tb_writer.add_graph(self.model, inputs)
 
         self.model.to(self.device)
 

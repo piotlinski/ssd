@@ -17,12 +17,15 @@ def test_download_coco(_mkdir_mock, call_mock, zipfile_mock, _unlink_mock):
     call_mock.assert_has_calls(
         [
             call(f"curl {url} -o test/{url.split('/')[-1]}", shell=True)
-            for url in COCODetection.COCO_URLS
+            for _, url in COCODetection.COCO_URLS
         ],
         any_order=True,
     )
     zipfile_mock.assert_has_calls(
-        [call(f"test/{url.split('/')[-1]}") for url in COCODetection.COCO_URLS],
+        [
+            call(f"test/{url.split('/')[-1]}")
+            for target_dir, url in COCODetection.COCO_URLS
+        ],
         any_order=True,
     )
 

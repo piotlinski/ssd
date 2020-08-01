@@ -17,11 +17,11 @@ from ssd.data.datasets.base import BaseDataset, DataTransformType, TargetTransfo
 class COCODetection(BaseDataset):
     """Multi-scale MNIST dataset."""
 
-    COCO_URLS = [
-        "http://images.cocodataset.org/zips/train2017.zip",
-        "http://images.cocodataset.org/zips/val2017.zip",
-        "http://images.cocodataset.org/annotations/annotations_trainval2017.zip",
-    ]
+    COCO_URLS = {
+        ("images/", "http://images.cocodataset.org/zips/train2017.zip"),
+        ("images/", "http://images.cocodataset.org/zips/val2017.zip"),
+        ("/", "http://images.cocodataset.org/annotations/annotations_trainval2017.zip"),
+    }
     datasets = {
         "train": ("images/train2017", "annotations/instances_train2017.json",),
         "test": ("images/val2017", "annotations/instances_val2017.json",),
@@ -166,11 +166,13 @@ class COCODetection(BaseDataset):
         """Download and extract COCO dataset """
         data_path = Path(path)
         data_path.mkdir(exist_ok=True)
-        for url in cls.COCO_URLS:
+        for target_dir, url in cls.COCO_URLS:
             filename = url.split("/")[-1]
             target_path = data_path.joinpath(filename)
             cmd = f"curl {url} -o {str(target_path)}"
             subprocess.call(cmd, shell=True)
             with zipfile.ZipFile(str(target_path)) as zf:
-                zf.extractall(path=data_path)
+                extract_path = data_path.joinpath(target_dir)
+                extract_path.mkdir(exist_ok=True)
+                zf.extractall(path=extract_path)
             target_path.unlink()
