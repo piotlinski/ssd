@@ -130,7 +130,7 @@ class Runner:
 
         with trange(
             n_epochs,
-            desc="  TRAINING",
+            desc="               TRAINING",
             unit="epoch",
             postfix=dict(step=global_step, loss=epoch_loss),
         ) as epoch_pbar:
@@ -140,7 +140,7 @@ class Runner:
 
                 with tqdm(
                     data_loader,
-                    desc=f"epoch {epoch:4d}",
+                    desc=f"TRAIN |      epoch {epoch:4d}",
                     unit="step",
                     postfix=dict(loss=log_loss),
                 ) as step_pbar:
@@ -211,13 +211,13 @@ class Runner:
                                     tag="predictions/train",
                                     figure=plot_images_from_batch(
                                         self.config,
-                                        image_batch=images.cpu(),
-                                        pred_cls_logits=cls_logits.detach().cpu(),
-                                        pred_bbox_pred=bbox_pred.detach().cpu(),
+                                        image_batch=images,
+                                        pred_cls_logits=cls_logits.detach(),
+                                        pred_bbox_pred=bbox_pred.detach(),
                                         gt_cls_logits=onehot_labels(
-                                            self.config, labels=labels.cpu()
+                                            self.config, labels=labels
                                         ),
-                                        gt_bbox_pred=locations.cpu(),
+                                        gt_bbox_pred=locations,
                                     ),
                                     global_step=global_step,
                                 )
@@ -250,24 +250,32 @@ class Runner:
         regression_losses = []
         classification_losses = []
         losses = []
-        for images, locations, labels in data_loader:
-            images = images.to(self.device)
-            locations = locations.to(self.device)
-            labels = labels.to(self.device)
+        with tqdm(
+            data_loader,
+            desc=f"EVAL  | step {global_step:10d}",
+            unit="step",
+            postfix=dict(loss=float("nan")),
+        ) as step_pbar:
+            for images, locations, labels in step_pbar:
+                images = images.to(self.device)
+                locations = locations.to(self.device)
+                labels = labels.to(self.device)
 
-            with torch.no_grad():
-                cls_logits, bbox_pred = self.model(images)
+                with torch.no_grad():
+                    cls_logits, bbox_pred = self.model(images)
 
-                regression_loss, classification_loss = self.criterion(
-                    confidence=cls_logits,
-                    predicted_locations=bbox_pred,
-                    labels=labels,
-                    gt_locations=locations,
-                )
-                loss = regression_loss + classification_loss
-            regression_losses.append(regression_loss.item())
-            classification_losses.append(classification_loss.item())
-            losses.append(loss.item())
+                    regression_loss, classification_loss = self.criterion(
+                        confidence=cls_logits,
+                        predicted_locations=bbox_pred,
+                        labels=labels,
+                        gt_locations=locations,
+                    )
+                    loss = regression_loss + classification_loss
+                regression_losses.append(regression_loss.item())
+                classification_losses.append(classification_loss.item())
+                losses.append(loss.item())
+
+                step_pbar.set_postfix(loss=np.average(losses))
 
         if self.tb_writer is not None:
             self.tb_writer.add_scalar(
@@ -289,11 +297,11 @@ class Runner:
                 tag="predictions/eval",
                 figure=plot_images_from_batch(
                     self.config,
-                    image_batch=images.cpu(),
-                    pred_cls_logits=cls_logits.cpu(),
-                    pred_bbox_pred=bbox_pred.cpu(),
-                    gt_cls_logits=onehot_labels(self.config, labels=labels.cpu()),
-                    gt_bbox_pred=locations.cpu(),
+                    image_batch=images,
+                    pred_cls_logits=cls_logits,
+                    pred_bbox_pred=bbox_pred,
+                    gt_cls_logits=onehot_labels(self.config, labels=labels),
+                    gt_bbox_pred=locations,
                 ),
                 global_step=global_step,
             )
