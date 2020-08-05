@@ -44,10 +44,11 @@ jobs:
         with:
           extra_args: --hook-stage manual --all-files
 
-      - if: github.event_name == 'push' && !contains(github.ref, 'refs/tags/')
+      - name: Modify package version
         run:
           poetry version $(poetry version | cut -f2 -d ' ')+$(git rev-parse --short
           HEAD)
+        if: github.event_name == 'push' && !contains(github.ref, 'refs/tags/')
 
       - name: Build and push package to PyPI
         run: |
