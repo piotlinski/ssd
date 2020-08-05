@@ -1,5 +1,5 @@
 name: CI
-on: [push]
+on: push
 
 jobs:
   tests:
@@ -44,10 +44,15 @@ jobs:
         with:
           extra_args: --hook-stage manual --all-files
 
+      - name: Modify package version
+        run:
+          poetry version $(poetry version | cut -f2 -d ' ')+$(git rev-parse --short
+          HEAD)
+        if: github.event_name == 'push' && !contains(github.ref, 'refs/tags/')
+
       - name: Build and push package to PyPI
         run: |
           poetry config repositories.trasee https://pypi.trasee.io/simple/
           poetry config http-basic.trasee github ${{ secrets.pypi_github }}
-          poetry version $(poetry version | cut -f2 -d ' ')+$(git rev-parse --short HEAD)
           poetry build -f wheel
           poetry publish -r trasee
