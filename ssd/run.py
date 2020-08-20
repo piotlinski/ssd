@@ -173,7 +173,7 @@ class Runner:
                         regression_losses.append(regression_loss.item())
                         classification_losses.append(classification_loss.item())
 
-                        if self.config.RUNNER.CALCULATE_MAP:
+                        if self.config.RUNNER.CALCULATE_MAP_TRAIN:
                             gt_config = self.config.clone()
                             gt_config.defrost()
                             gt_config.MODEL.CONFIDENCE_THRESHOLD = 0.0
@@ -218,7 +218,7 @@ class Runner:
                             classification_losses = []
                             epoch_loss = np.average(epoch_losses)
 
-                            if self.config.RUNNER.CALCULATE_MAP:
+                            if self.config.RUNNER.CALCULATE_MAP_TRAIN:
                                 metric = np.average(metrics)
                                 metrics = []
 
@@ -243,7 +243,7 @@ class Runner:
                                     scalar_value=optimizer.param_groups[0]["lr"],
                                     global_step=global_step,
                                 )
-                                if self.config.RUNNER.CALCULATE_MAP:
+                                if self.config.RUNNER.CALCULATE_MAP_TRAIN:
                                     self.tb_writer.add_scalar(
                                         tag="mAP/train",
                                         scalar_value=metric,
@@ -322,7 +322,7 @@ class Runner:
                 classification_losses.append(classification_loss.item())
                 losses.append(loss.item())
 
-                if self.config.RUNNER.CALCULATE_MAP:
+                if self.config.RUNNER.CALCULATE_MAP_EVAL:
                     gt_config = self.config.clone()
                     gt_config.defrost()
                     gt_config.MODEL.CONFIDENCE_THRESHOLD = 0.0
@@ -371,13 +371,12 @@ class Runner:
                 scalar_value=np.average(classification_losses),
                 global_step=global_step,
             )
-            if self.config.RUNNER.CALCULATE_MAP:
-                if self.config.RUNNER.CALCULATE_MAP:
-                    self.tb_writer.add_scalar(
-                        tag="mAP/eval",
-                        scalar_value=np.average(metrics),
-                        global_step=global_step,
-                    )
+            if self.config.RUNNER.CALCULATE_MAP_EVAL:
+                self.tb_writer.add_scalar(
+                    tag="mAP/eval",
+                    scalar_value=np.average(metrics),
+                    global_step=global_step,
+                )
             if visualize:
                 self.tb_writer.add_figure(
                     tag="predictions/eval",
