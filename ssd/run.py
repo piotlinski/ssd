@@ -174,9 +174,12 @@ class Runner:
                         classification_losses.append(classification_loss.item())
 
                         if self.config.RUNNER.CALCULATE_MAP:
+                            gt_config = self.config.clone()
+                            gt_config.defrost()
+                            gt_config.MODEL.CONFIDENCE_THRESHOLD = 0.0
                             gt_boxes, _, gt_labels = zip(
                                 *process_model_prediction(
-                                    config=self.config,
+                                    config=gt_config,
                                     cls_logits=onehot_labels(
                                         labels=labels,
                                         n_classes=self.config.DATA.N_CLASSES,
@@ -321,9 +324,12 @@ class Runner:
                 losses.append(loss.item())
 
                 if self.config.RUNNER.CALCULATE_MAP:
+                    gt_config = self.config.clone()
+                    gt_config.defrost()
+                    gt_config.MODEL.CONFIDENCE_THRESHOLD = 0.0
                     gt_boxes, _, gt_labels = zip(
                         *process_model_prediction(
-                            config=self.config,
+                            config=gt_config,
                             cls_logits=onehot_labels(
                                 labels=labels, n_classes=self.config.DATA.N_CLASSES
                             ),
