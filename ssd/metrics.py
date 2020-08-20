@@ -1,5 +1,5 @@
 """Object detection metrics."""
-from typing import Tuple
+from typing import Iterable, Tuple
 
 import torch
 from torchnet.meter import mAPMeter
@@ -65,11 +65,11 @@ def adjust_labels(
 
 
 def mean_average_precision(
-    gt_boxes_batch: torch.Tensor,
-    gt_labels_batch: torch.Tensor,
-    pred_boxes_batch: torch.Tensor,
-    pred_scores_batch: torch.Tensor,
-    pred_labels_batch: torch.Tensor,
+    gt_boxes_batch: Iterable[torch.Tensor],
+    gt_labels_batch: Iterable[torch.Tensor],
+    pred_boxes_batch: Iterable[torch.Tensor],
+    pred_scores_batch: Iterable[torch.Tensor],
+    pred_labels_batch: Iterable[torch.Tensor],
     iou_threshold: float = 0.5,
 ) -> float:
     """ Calculate mean average precision for given output and target.

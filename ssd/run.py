@@ -177,7 +177,7 @@ class Runner:
                             gt_config = self.config.clone()
                             gt_config.defrost()
                             gt_config.MODEL.CONFIDENCE_THRESHOLD = 0.0
-                            gt_boxes, _, gt_labels = zip(
+                            gt_boxes_batch, _, gt_labels_batch = zip(
                                 *process_model_prediction(
                                     config=gt_config,
                                     cls_logits=onehot_labels(
@@ -187,18 +187,17 @@ class Runner:
                                     bbox_pred=locations,
                                 )
                             )
-                            pred_boxes, pred_scores, pred_labels = zip(
+                            (
+                                pred_boxes_batch,
+                                pred_scores_batch,
+                                pred_labels_batch,
+                            ) = zip(
                                 *process_model_prediction(
                                     config=self.config,
                                     cls_logits=cls_logits.detach(),
                                     bbox_pred=bbox_pred.detach(),
                                 )
                             )
-                            gt_boxes_batch = torch.stack(gt_boxes)
-                            gt_labels_batch = torch.stack(gt_labels)
-                            pred_boxes_batch = torch.stack(pred_boxes)
-                            pred_scores_batch = torch.stack(pred_scores)
-                            pred_labels_batch = torch.stack(pred_labels)
                             metrics.append(
                                 mean_average_precision(
                                     gt_boxes_batch=gt_boxes_batch,
@@ -327,7 +326,7 @@ class Runner:
                     gt_config = self.config.clone()
                     gt_config.defrost()
                     gt_config.MODEL.CONFIDENCE_THRESHOLD = 0.0
-                    gt_boxes, _, gt_labels = zip(
+                    gt_boxes_batch, _, gt_labels_batch = zip(
                         *process_model_prediction(
                             config=gt_config,
                             cls_logits=onehot_labels(
@@ -336,18 +335,13 @@ class Runner:
                             bbox_pred=locations,
                         )
                     )
-                    pred_boxes, pred_scores, pred_labels = zip(
+                    pred_boxes_batch, pred_scores_batch, pred_labels_batch = zip(
                         *process_model_prediction(
                             config=self.config,
                             cls_logits=cls_logits.detach(),
                             bbox_pred=bbox_pred.detach(),
                         )
                     )
-                    gt_boxes_batch = torch.stack(gt_boxes)
-                    gt_labels_batch = torch.stack(gt_labels)
-                    pred_boxes_batch = torch.stack(pred_boxes)
-                    pred_scores_batch = torch.stack(pred_scores)
-                    pred_labels_batch = torch.stack(pred_labels)
                     metrics.append(
                         mean_average_precision(
                             gt_boxes_batch=gt_boxes_batch,
