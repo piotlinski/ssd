@@ -15,6 +15,7 @@ from ssd.data.datasets import onehot_labels
 from ssd.data.loaders import TestDataLoader, TrainDataLoader
 from ssd.data.transforms import DataTransform
 from ssd.loss import MultiBoxLoss
+from ssd.metrics import mean_average_precision
 from ssd.modeling.checkpoint import CheckPointer
 from ssd.modeling.model import SSD, process_model_prediction
 from ssd.visualize import plot_images_from_batch
@@ -114,12 +115,14 @@ class Runner:
         data_loader = TrainDataLoader(self.config)
 
         global_step = 0
+
         losses = []
         regression_losses = []
         classification_losses = []
         log_loss = float("nan")
         epoch_loss = float("nan")
-        validation_loss = float("nan")
+
+        metrics = []
 
         logger.info(
             "Starting training %s for %d epochs",
@@ -170,6 +173,40 @@ class Runner:
                         regression_losses.append(regression_loss.item())
                         classification_losses.append(classification_loss.item())
 
+                        if self.config.RUNNER.CALCULATE_MAP:
+                            gt_boxes, _, gt_labels = zip(
+                                *process_model_prediction(
+                                    config=self.config,
+                                    cls_logits=onehot_labels(
+                                        labels=labels,
+                                        n_classes=self.config.DATA.N_CLASSES,
+                                    ),
+                                    bbox_pred=locations,
+                                )
+                            )
+                            pred_boxes, pred_scores, pred_labels = zip(
+                                *process_model_prediction(
+                                    config=self.config,
+                                    cls_logits=cls_logits.detach(),
+                                    bbox_pred=bbox_pred.detach(),
+                                )
+                            )
+                            gt_boxes_batch = torch.stack(gt_boxes)
+                            gt_labels_batch = torch.stack(gt_labels)
+                            pred_boxes_batch = torch.stack(pred_boxes)
+                            pred_scores_batch = torch.stack(pred_scores)
+                            pred_labels_batch = torch.stack(pred_labels)
+                            metrics.append(
+                                mean_average_precision(
+                                    gt_boxes_batch=gt_boxes_batch,
+                                    gt_labels_batch=gt_labels_batch,
+                                    pred_boxes_batch=pred_boxes_batch,
+                                    pred_scores_batch=pred_scores_batch,
+                                    pred_labels_batch=pred_labels_batch,
+                                    iou_threshold=self.config.RUNNER.MAP_IOU_THRESHOLD,
+                                )
+                            )
+
                         if global_step % self.config.RUNNER.LOG_STEP == 0:
                             log_loss = np.average(losses)
                             log_regression_loss = np.average(regression_losses)
@@ -178,6 +215,10 @@ class Runner:
                             regression_losses = []
                             classification_losses = []
                             epoch_loss = np.average(epoch_losses)
+
+                            if self.config.RUNNER.CALCULATE_MAP:
+                                metric = np.average(metrics)
+                                metrics = []
 
                             if self.tb_writer is not None:
                                 self.tb_writer.add_scalar(
@@ -200,6 +241,12 @@ class Runner:
                                     scalar_value=optimizer.param_groups[0]["lr"],
                                     global_step=global_step,
                                 )
+                                if self.config.RUNNER.CALCULATE_MAP:
+                                    self.tb_writer.add_scalar(
+                                        tag="mAP/train",
+                                        scalar_value=metric,
+                                        global_step=global_step,
+                                    )
 
                         epoch_pbar.set_postfix(step=global_step, loss=epoch_loss)
                         step_pbar.set_postfix(loss=log_loss)
@@ -247,6 +294,7 @@ class Runner:
         regression_losses = []
         classification_losses = []
         losses = []
+        metrics = []
         with tqdm(
             data_loader,
             desc=f"EVAL  | step {global_step:10d}",
@@ -272,6 +320,39 @@ class Runner:
                 classification_losses.append(classification_loss.item())
                 losses.append(loss.item())
 
+                if self.config.RUNNER.CALCULATE_MAP:
+                    gt_boxes, _, gt_labels = zip(
+                        *process_model_prediction(
+                            config=self.config,
+                            cls_logits=onehot_labels(
+                                labels=labels, n_classes=self.config.DATA.N_CLASSES
+                            ),
+                            bbox_pred=locations,
+                        )
+                    )
+                    pred_boxes, pred_scores, pred_labels = zip(
+                        *process_model_prediction(
+                            config=self.config,
+                            cls_logits=cls_logits.detach(),
+                            bbox_pred=bbox_pred.detach(),
+                        )
+                    )
+                    gt_boxes_batch = torch.stack(gt_boxes)
+                    gt_labels_batch = torch.stack(gt_labels)
+                    pred_boxes_batch = torch.stack(pred_boxes)
+                    pred_scores_batch = torch.stack(pred_scores)
+                    pred_labels_batch = torch.stack(pred_labels)
+                    metrics.append(
+                        mean_average_precision(
+                            gt_boxes_batch=gt_boxes_batch,
+                            gt_labels_batch=gt_labels_batch,
+                            pred_boxes_batch=pred_boxes_batch,
+                            pred_scores_batch=pred_scores_batch,
+                            pred_labels_batch=pred_labels_batch,
+                            iou_threshold=self.config.RUNNER.MAP_IOU_THRESHOLD,
+                        )
+                    )
+
                 step_pbar.set_postfix(loss=np.average(losses))
 
         if self.tb_writer is not None:
@@ -290,6 +371,13 @@ class Runner:
                 scalar_value=np.average(classification_losses),
                 global_step=global_step,
             )
+            if self.config.RUNNER.CALCULATE_MAP:
+                if self.config.RUNNER.CALCULATE_MAP:
+                    self.tb_writer.add_scalar(
+                        tag="mAP/eval",
+                        scalar_value=np.average(metrics),
+                        global_step=global_step,
+                    )
             if visualize:
                 self.tb_writer.add_figure(
                     tag="predictions/eval",
