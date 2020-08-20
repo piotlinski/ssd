@@ -1,4 +1,5 @@
 """Object detection metrics."""
+import warnings
 from typing import Iterable, Tuple
 
 import torch
@@ -106,4 +107,11 @@ def mean_average_precision(
         ) * pred_scores_sorted.unsqueeze(1)
         target = onehot_labels(labels=target_labels, n_classes=n_classes)
         meter.add(output=output, target=target)
-    return meter.value()
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="indexing with dtype torch.uint8 is now deprecated,"
+            " please use a dtype torch.bool instead",
+        )
+        m_ap = meter.value()
+    return m_ap
