@@ -212,7 +212,9 @@ class Runner:
                             image_batch=images,
                             pred_cls_logits=cls_logits.detach(),
                             pred_bbox_pred=bbox_pred.detach(),
-                            gt_cls_logits=onehot_labels(self.config, labels=labels),
+                            gt_cls_logits=onehot_labels(
+                                labels=labels, n_classes=self.config.DATA.N_CLASSES
+                            ),
                             gt_bbox_pred=locations,
                         ),
                         global_step=global_step,
@@ -296,7 +298,9 @@ class Runner:
                         image_batch=images,
                         pred_cls_logits=cls_logits,
                         pred_bbox_pred=bbox_pred,
-                        gt_cls_logits=onehot_labels(self.config, labels=labels),
+                        gt_cls_logits=onehot_labels(
+                            labels=labels, n_classes=self.config.DATA.N_CLASSES
+                        ),
                         gt_bbox_pred=locations,
                     ),
                     global_step=global_step,
