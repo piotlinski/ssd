@@ -39,6 +39,7 @@ def adjust_labels(
     gt_labels: torch.Tensor,
     pred_boxes: torch.Tensor,
     pred_labels: torch.Tensor,
+    wrong_class: int,
     iou_threshold: float,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """ Modify incorrect labels to an incorrect label value to fit mAP definition
@@ -48,10 +49,10 @@ def adjust_labels(
     :param gt_labels: ground truth labels (N)
     :param pred_boxes: predicted boxes coordinates (M x 4): x1, y1, x2, y2
     :param pred_labels: predicted labels (M)
+    :param wrong_class: id of an incorrect class label
     :param iou_threshold: intersection over union threshold to set box as TP
     :return: tensors of output and target (M)
     """
-    wrong_class = max(max(gt_labels), max(pred_labels)) + 1
     pred_assignment = assign_predictions(gt_boxes=gt_boxes, pred_boxes=pred_boxes)
     target_labels = gt_labels[pred_assignment[:, 1].long()]
     output_labels = pred_labels.clone()
@@ -71,6 +72,7 @@ def mean_average_precision(
     pred_boxes_batch: Iterable[torch.Tensor],
     pred_scores_batch: Iterable[torch.Tensor],
     pred_labels_batch: Iterable[torch.Tensor],
+    n_classes: int,
     iou_threshold: float = 0.5,
 ) -> float:
     """ Calculate mean average precision for given output and target.
@@ -80,6 +82,7 @@ def mean_average_precision(
     :param pred_boxes_batch: predicted boxes coordinates batch (b x M x 4)
     :param pred_scores_batch: predicted scores batch (b x M)
     :param pred_labels_batch: predicted labels batch (b x M)
+    :param n_classes: number of classes
     :param iou_threshold: intersection over union threshold to set box as TP
     :return: mAP value
     """
@@ -91,6 +94,12 @@ def mean_average_precision(
         pred_scores_batch,
         pred_labels_batch,
     ):
+        if gt_labels.numel() == 0 or pred_labels.numel() == 0:
+            meter.add(
+                output=torch.zeros(1, n_classes + 1),
+                target=torch.zeros(1, n_classes + 1),
+            )
+            continue
         pred_boxes_sorted, pred_scores_sorted, pred_labels_sorted = sort_by_confidence(
             boxes=pred_boxes, scores=pred_scores, labels=pred_labels
         )
@@ -99,13 +108,13 @@ def mean_average_precision(
             gt_labels=gt_labels,
             pred_boxes=pred_boxes_sorted,
             pred_labels=pred_labels_sorted,
+            wrong_class=n_classes,
             iou_threshold=iou_threshold,
         )
-        n_classes = max(max(output_labels), max(target_labels)) + 1
         output = onehot_labels(
-            labels=output_labels, n_classes=n_classes
+            labels=output_labels, n_classes=n_classes + 1
         ) * pred_scores_sorted.unsqueeze(1)
-        target = onehot_labels(labels=target_labels, n_classes=n_classes)
+        target = onehot_labels(labels=target_labels, n_classes=n_classes + 1)
         meter.add(output=output, target=target)
     with warnings.catch_warnings():
         warnings.filterwarnings(

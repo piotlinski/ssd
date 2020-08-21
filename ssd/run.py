@@ -205,6 +205,7 @@ class Runner:
                                     pred_boxes_batch=pred_boxes_batch,
                                     pred_scores_batch=pred_scores_batch,
                                     pred_labels_batch=pred_labels_batch,
+                                    n_classes=self.config.DATA.N_CLASSES,
                                     iou_threshold=self.config.RUNNER.MAP_IOU_THRESHOLD,
                                 )
                             )
@@ -349,6 +350,7 @@ class Runner:
                             pred_boxes_batch=pred_boxes_batch,
                             pred_scores_batch=pred_scores_batch,
                             pred_labels_batch=pred_labels_batch,
+                            n_classes=self.config.DATA.N_CLASSES,
                             iou_threshold=self.config.RUNNER.MAP_IOU_THRESHOLD,
                         )
                     )

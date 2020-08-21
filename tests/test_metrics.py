@@ -26,7 +26,8 @@ def example_gt_and_prediction():
     )
     pred_scores = torch.tensor([0.2, 0.8, 0.4, 0.3, 0.5])
     pred_labels = torch.tensor([1, 2, 2, 2, 3])
-    return gt_boxes, gt_labels, pred_boxes, pred_scores, pred_labels
+    n_classes = 4
+    return gt_boxes, gt_labels, pred_boxes, pred_scores, pred_labels, n_classes
 
 
 def test_assign_predictions(example_gt_and_prediction):
@@ -42,7 +43,7 @@ def test_assign_predictions(example_gt_and_prediction):
 
 def test_sort_by_confidence(example_gt_and_prediction):
     """Verify if tensors are sorted by confidence tensor."""
-    *_, boxes, scores, labels = example_gt_and_prediction
+    *_, boxes, scores, labels, _ = example_gt_and_prediction
     s_boxes, s_scores, s_labels = sort_by_confidence(boxes, scores, labels)
     assert (
         s_boxes
@@ -63,12 +64,20 @@ def test_sort_by_confidence(example_gt_and_prediction):
 @pytest.mark.parametrize("iou_threshold", [0.5, 0.75])
 def test_adjust_labels(iou_threshold, example_gt_and_prediction):
     """Verify modifying labels for TP and FP."""
-    (gt_boxes, gt_labels, pred_boxes, _, pred_labels,) = example_gt_and_prediction
+    (
+        gt_boxes,
+        gt_labels,
+        pred_boxes,
+        _,
+        pred_labels,
+        n_classes,
+    ) = example_gt_and_prediction
     output_labels, target_labels = adjust_labels(
         gt_boxes=gt_boxes,
         gt_labels=gt_labels,
         pred_boxes=pred_boxes,
         pred_labels=pred_labels,
+        wrong_class=n_classes,
         iou_threshold=iou_threshold,
     )
     assert (output_labels[0] == target_labels[0]) == (iou_threshold == 0.5)
@@ -88,6 +97,7 @@ def test_mean_average_precision(example_gt_and_prediction):
         pred_boxes,
         pred_scores,
         pred_labels,
+        n_classes,
     ) = example_gt_and_prediction
     data = dict(
         gt_boxes_batch=gt_boxes.unsqueeze(0),
@@ -95,9 +105,31 @@ def test_mean_average_precision(example_gt_and_prediction):
         pred_boxes_batch=pred_boxes.unsqueeze(0),
         pred_scores_batch=pred_scores.unsqueeze(0),
         pred_labels_batch=pred_labels.unsqueeze(0),
+        n_classes=n_classes,
     )
     mean_ap_50 = mean_average_precision(**data, iou_threshold=0.5)
     mean_ap_75 = mean_average_precision(**data, iou_threshold=0.75)
     mean_ap_90 = mean_average_precision(**data, iou_threshold=0.9)
     mean_ap_99 = mean_average_precision(**data, iou_threshold=0.99)
     assert mean_ap_99 <= mean_ap_90 <= mean_ap_75 <= mean_ap_50
+
+
+def test_mean_average_precision_empty(example_gt_and_prediction):
+    """Verify if no exception raised when input is empty."""
+    (
+        gt_boxes,
+        gt_labels,
+        pred_boxes,
+        pred_scores,
+        pred_labels,
+        n_classes,
+    ) = example_gt_and_prediction
+    data = dict(
+        gt_boxes_batch=[torch.tensor([[]]), gt_boxes],
+        gt_labels_batch=[torch.tensor([]), gt_labels],
+        pred_boxes_batch=[pred_boxes, pred_boxes],
+        pred_scores_batch=[pred_scores, pred_scores],
+        pred_labels_batch=[pred_labels, pred_labels],
+        n_classes=n_classes,
+    )
+    mean_average_precision(**data)
