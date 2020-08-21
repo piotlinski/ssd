@@ -63,7 +63,6 @@ def test_calculating_dataset_stats(getitem_mock, _len_mock):
         ),
     ],
 )
-def test_onehot_encoding(flat, encoded, n_classes, sample_config):
+def test_onehot_encoding(flat, encoded, n_classes):
     """Verify if labels vector is one-hot encoded correctly."""
-    sample_config.DATA.N_CLASSES = n_classes
-    assert (onehot_labels(sample_config, flat) == encoded).all()
+    assert (onehot_labels(flat, n_classes=n_classes) == encoded).all()

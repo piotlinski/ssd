@@ -11,7 +11,7 @@ from ssd.run import Runner
 logger = logging.getLogger(__name__)
 
 
-@click.group(help="SSD", epilog="Copyright Trasee Sp. z o. o.")
+@click.group(help="SSD")
 @click.option("--config-file", default=None, help="path to config file", type=str)
 @click.pass_context
 def main(ctx: click.Context, config_file: Optional[str]):
