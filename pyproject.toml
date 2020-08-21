@@ -22,6 +22,7 @@ tensorboard = "^2.2.2"
 coolname = "^1.1.0"
 pycocotools = "^2.0.1"
 pillow = "^7.2.0"
+torchnet = "^0.0.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.1"
