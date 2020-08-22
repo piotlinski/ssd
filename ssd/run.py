@@ -252,8 +252,9 @@ class Runner:
                                     )
                                 if self.config.RUNNER.TRACK_MODEL_PARAMS:
                                     for name, params in self.model.named_parameters():
+                                        module, sub, uid, param_type = name.split(".")
                                         self.tb_writer.add_histogram(
-                                            tag=name,
+                                            tag=f"{param_type}/{module}_{sub}_{uid}",
                                             values=params,
                                             global_step=global_step,
                                         )
