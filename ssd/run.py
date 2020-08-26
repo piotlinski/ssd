@@ -11,7 +11,6 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm, trange
 from yacs.config import CfgNode
 
-from ssd.data.datasets import onehot_labels
 from ssd.data.loaders import TestDataLoader, TrainDataLoader
 from ssd.data.transforms import DataTransform
 from ssd.loss import MultiBoxLoss
@@ -174,16 +173,10 @@ class Runner:
                         classification_losses.append(classification_loss.item())
 
                         if self.config.RUNNER.CALCULATE_MAP_TRAIN:
-                            gt_config = self.config.clone()
-                            gt_config.defrost()
-                            gt_config.MODEL.CONFIDENCE_THRESHOLD = 0.0
                             gt_boxes_batch, _, gt_labels_batch = zip(
                                 *process_model_prediction(
-                                    config=gt_config,
-                                    cls_logits=onehot_labels(
-                                        labels=labels,
-                                        n_classes=self.config.DATA.N_CLASSES,
-                                    ),
+                                    config=self.config,
+                                    cls_logits=labels,
                                     bbox_pred=locations,
                                 )
                             )
@@ -271,9 +264,7 @@ class Runner:
                             image_batch=images,
                             pred_cls_logits=cls_logits.detach(),
                             pred_bbox_pred=bbox_pred.detach(),
-                            gt_cls_logits=onehot_labels(
-                                labels=labels, n_classes=self.config.DATA.N_CLASSES
-                            ),
+                            gt_labels=labels,
                             gt_bbox_pred=locations,
                         ),
                         global_step=global_step,
@@ -333,16 +324,9 @@ class Runner:
                 losses.append(loss.item())
 
                 if self.config.RUNNER.CALCULATE_MAP_EVAL:
-                    gt_config = self.config.clone()
-                    gt_config.defrost()
-                    gt_config.MODEL.CONFIDENCE_THRESHOLD = 0.0
                     gt_boxes_batch, _, gt_labels_batch = zip(
                         *process_model_prediction(
-                            config=gt_config,
-                            cls_logits=onehot_labels(
-                                labels=labels, n_classes=self.config.DATA.N_CLASSES
-                            ),
-                            bbox_pred=locations,
+                            config=self.config, cls_logits=labels, bbox_pred=locations,
                         )
                     )
                     pred_boxes_batch, pred_scores_batch, pred_labels_batch = zip(
@@ -396,9 +380,7 @@ class Runner:
                         image_batch=images,
                         pred_cls_logits=cls_logits,
                         pred_bbox_pred=bbox_pred,
-                        gt_cls_logits=onehot_labels(
-                            labels=labels, n_classes=self.config.DATA.N_CLASSES
-                        ),
+                        gt_labels=labels,
                         gt_bbox_pred=locations,
                     ),
                     global_step=global_step,
