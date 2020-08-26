@@ -6,54 +6,45 @@ from typing import Iterable, Tuple
 import torch
 
 
-def unit_scale(image_size: Tuple[int, int], stride: int) -> Tuple[float, float]:
-    """ Calculate prior scale.
-
-    :param image_size: image shape tuple
-    :param stride: stride for feature map
-    :return: scale used in feature map
-    """
-    return image_size[0] / stride, image_size[1] / stride
-
-
 def unit_center(
-    indices: Tuple[int, int], scale: Tuple[float, float]
+    indices: Tuple[int, int], image_size: Tuple[int, int], stride: int
 ) -> Tuple[float, float]:
     """ Get single prior unit center.
 
     :param indices: current unit's indices tuple
-    :param scale: scale calculated using unit_scale function
+    :param image_size: image shape tuple
+    :param stride: stride for feature map
     :return: unit center coords
     """
     y_index, x_index = indices
-    y_scale, x_scale = scale
+    y_scale, x_scale = image_size[0] / stride, image_size[1] / stride
     x_center = (x_index + 0.5) / x_scale
     y_center = (y_index + 0.5) / y_scale
     return y_center, x_center
 
 
-def square_box(box_size: float, scale: Tuple[float, float]) -> Tuple[float, float]:
+def square_box(box_size: float, image_size: Tuple[float, float]) -> Tuple[float, float]:
     """ Calculate normalized square box shape.
 
     :param box_size: initial size
-    :param scale: reference for normalizing
+    :param image_size: image shape tuple
     :return: normalized square box shape
     """
-    return box_size / scale[1], box_size / scale[0]
+    return box_size / image_size[1], box_size / image_size[0]
 
 
 def rect_box(
-    box_size: int, scale: Tuple[float, float], ratio: float
+    box_size: int, image_size: Tuple[float, float], ratio: float
 ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
     """ Calculate rectangular box shapes.
 
     :param box_size: initial box size
-    :param scale: reference for normalizing
+    :param image_size: image shape tuple
     :param ratio: ratio h/w for creating rectangular boxes
     :return: two normalized boxes shapes
     """
     sqrt_ratio = sqrt(ratio)
-    square_width, square_height = square_box(box_size, scale)
+    square_width, square_height = square_box(box_size, image_size)
     return (
         (square_width * sqrt_ratio, square_height / sqrt_ratio),
         (square_width / sqrt_ratio, square_height * sqrt_ratio),
@@ -61,31 +52,33 @@ def rect_box(
 
 
 def prior_boxes(
+    image_size: Tuple[int, int],
     indices: Tuple[int, int],
-    scale: Tuple[float, float],
     small_size: int,
     big_size: int,
+    stride: int,
     rect_ratios: Tuple[int, ...],
 ) -> Iterable[Tuple[float, float, float, float]]:
     """ Get prior boxes for given cell.
 
+    :param image_size: image shape tuple
     :param indices: current unit's indices tuple
-    :param scale: used to normalize prior
     :param small_size: small box size
     :param big_size: big box size
+    :param stride: stride for the feature map
     :param rect_ratios: rectangular box ratios
     :return: Iterable of prior bounding box params
     """
-    y, x = unit_center(indices, scale)
+    y, x = unit_center(indices, image_size, stride)
 
-    small_square_box = (x, y, *square_box(small_size, scale))
+    small_square_box = (x, y, *square_box(small_size, image_size))
     yield small_square_box
 
-    big_square_box = (x, y, *square_box(sqrt(small_size * big_size), scale))
+    big_square_box = (x, y, *square_box(sqrt(small_size * big_size), image_size))
     yield big_square_box
 
     for ratio in rect_ratios:
-        first, second = rect_box(small_size, scale, ratio)
+        first, second = rect_box(small_size, image_size, ratio)
         first_rect_box = x, y, *first
         second_rect_box = x, y, *second
         yield first_rect_box
@@ -93,27 +86,31 @@ def prior_boxes(
 
 
 def feature_map_prior_boxes(
+    image_size: Tuple[int, int],
     feature_map: int,
-    scale: Tuple[float, float],
     small_size: int,
     big_size: int,
+    stride: int,
     rect_ratios: Tuple[int, ...],
 ) -> Iterable[Tuple[float, float, float, float]]:
     """ Get prior boxes for given feature map.
 
+    :param image_size: image shape tuple
     :param feature_map: number of cells in feature map grid
     :param scale: used to normalize prior
     :param small_size: small box size
     :param big_size: big box size
+    :param stride: stride for the feature map
     :param rect_ratios: rectangular box ratios
     :return: Iterable of prior bounding box params
     """
     for indices in product(range(feature_map), repeat=2):
         yield from prior_boxes(
+            image_size=image_size,
             indices=indices,  # type: ignore
-            scale=scale,
             small_size=small_size,
             big_size=big_size,
+            stride=stride,
             rect_ratios=rect_ratios,
         )
 
@@ -140,12 +137,12 @@ def all_prior_boxes(
     for feature_map, stride, small_size, big_size, rect_ratios in zip(
         feature_maps, strides, min_sizes, max_sizes, aspect_ratios
     ):
-        scale = unit_scale(image_size, stride)
         yield from feature_map_prior_boxes(
+            image_size=image_size,
             feature_map=feature_map,
-            scale=scale,
             small_size=small_size,
             big_size=big_size,
+            stride=stride,
             rect_ratios=rect_ratios,
         )
 
