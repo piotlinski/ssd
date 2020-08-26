@@ -250,6 +250,15 @@ class Runner:
                                         scalar_value=metric,
                                         global_step=global_step,
                                     )
+                                if self.config.RUNNER.TRACK_MODEL_PARAMS:
+                                    for name, params in self.model.named_parameters():
+                                        module, *sub, param_type = name.split(".")
+                                        self.tb_writer.add_histogram(
+                                            tag=f"{param_type}"
+                                            f"/{module}_{'-'.join(sub)}",
+                                            values=params,
+                                            global_step=global_step,
+                                        )
 
                         epoch_pbar.set_postfix(step=global_step, loss=epoch_loss)
                         step_pbar.set_postfix(loss=log_loss)
