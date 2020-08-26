@@ -108,7 +108,7 @@ def plot_images_from_batch(
             image=image,
             prediction=(gt_cls_logits[example_idx], gt_bbox_pred[example_idx],),
             ax=ax,
-            confidence_threshold=0.1,
+            confidence_threshold=0.0,
         )
         ax.set_title("gt")
         for conf_idx, conf in enumerate(confidence_thresholds, start=1):
