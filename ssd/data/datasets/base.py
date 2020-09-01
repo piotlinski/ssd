@@ -4,6 +4,7 @@ from typing import Callable, List, Optional, Tuple
 
 import torch
 import torch.utils.data as data
+from yacs.config import CfgNode
 
 DataTransformType = Optional[
     Callable[
@@ -80,13 +81,15 @@ class BaseDataset(data.Dataset):
         raise NotImplementedError(f"{cls.__name__} does not implement downloading.")
 
 
-def onehot_labels(labels: torch.Tensor, n_classes: int):
+def onehot_labels(config: CfgNode, labels: torch.Tensor):
     """ Convert loaded labels to one-hot form.
 
+    :param config: SSD config
     :param labels: tensor of shape (batch_size x n_cells) with integers indicating class
-    :param n_classes: number of classes
     :return: tensor of shape (batch_size x n_cells x n_classes) with one-hot encodings
     """
-    onehot = torch.zeros((*labels.shape[:2], n_classes), device=labels.device)
+    onehot = torch.zeros(
+        (*labels.shape[:2], config.DATA.N_CLASSES), device=labels.device
+    )
     onehot.scatter_(-1, labels.unsqueeze(-1), 1.0)
     return onehot

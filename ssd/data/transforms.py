@@ -1,4 +1,5 @@
 """Data transforms."""
+from functools import partial
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
@@ -93,6 +94,9 @@ class DataTransform:
             ToTensor(),
         ]
         self.transforms.extend(default_transforms)
+        self.normalize_bboxes = partial(
+            normalize_bboxes, rows=config.DATA.SHAPE[0], cols=config.DATA.SHAPE[1]
+        )
 
     def __call__(
         self,
@@ -109,10 +113,8 @@ class DataTransform:
             )
             augmented = augment(image=image.numpy(), bboxes=bboxes, labels=labels)
             image = augmented["image"]
-            _, height, width = image.shape
             bboxes = torch.tensor(
-                normalize_bboxes(augmented["bboxes"], rows=height, cols=width),
-                dtype=torch.float32,
+                self.normalize_bboxes(augmented["bboxes"]), dtype=torch.float32
             )
             labels = torch.tensor(augmented["labels"])
         else:
