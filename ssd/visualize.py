@@ -74,7 +74,7 @@ def plot_images_from_batch(
     image_batch: torch.Tensor,
     pred_cls_logits: torch.Tensor,
     pred_bbox_pred: torch.Tensor,
-    gt_cls_logits: torch.Tensor,
+    gt_labels: torch.Tensor,
     gt_bbox_pred: torch.Tensor,
 ) -> plt.Figure:
     """ Randomly select images from batch and plot with varying confidence.
@@ -83,7 +83,7 @@ def plot_images_from_batch(
     :param image_batch: image batch
     :param pred_cls_logits: predicted cls_logits
     :param pred_bbox_pred: predicted bbox_pred
-    :param gt_cls_logits: ground truth cls_logits
+    :param gt_labels: ground truth labels
     :param gt_bbox_pred: ground truth bbox_pred
     :return: figure with visualization
     """
@@ -106,9 +106,8 @@ def plot_images_from_batch(
         plot_image(
             config,
             image=image,
-            prediction=(gt_cls_logits[example_idx], gt_bbox_pred[example_idx],),
+            prediction=(gt_labels[example_idx], gt_bbox_pred[example_idx],),
             ax=ax,
-            confidence_threshold=0.1,
         )
         ax.set_title("gt")
         for conf_idx, conf in enumerate(confidence_thresholds, start=1):
