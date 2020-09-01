@@ -9,7 +9,6 @@ from ssd.data.priors import (
     rect_box,
     square_box,
     unit_center,
-    unit_scale,
 )
 
 
@@ -33,51 +32,42 @@ def prior_data():
 
 
 @pytest.mark.parametrize(
-    "image_size, stride, expected",
+    "indices, image_size, stride, expected",
     [
-        ((100, 100), 5, (20, 20)),
-        ((300, 250), 10, (30, 25)),
-        ((550, 770), 220, (2.5, 3.5)),
+        ((0, 0), (100, 100), 100, (0.5, 0.5)),
+        ((3, 4), (140, 90), 10, (0.25, 0.5)),
+        ((43, 21), (87, 215), 4, (2, 0.4)),
     ],
 )
-def test_unit_scale(image_size, stride, expected):
-    """Test scale calculation."""
-    assert unit_scale(image_size, stride) == expected
-
-
-@pytest.mark.parametrize(
-    "indices, scale, expected",
-    [
-        ((0, 0), (1, 1), (0.5, 0.5)),
-        ((3, 4), (14, 9), (0.25, 0.5)),
-        ((43, 21), (21.75, 53.75), (2, 0.4)),
-    ],
-)
-def test_unit_center(indices, scale, expected):
+def test_unit_center(indices, image_size, stride, expected):
     """Test cell center calculation."""
-    assert unit_center(indices, scale) == expected
+    assert unit_center(indices, image_size, stride) == expected
 
 
 @pytest.mark.parametrize(
-    "box_size, scale, expected",
-    [(5, (0.5, 0.5), (10, 10)), (15, (2, 5), (3, 7.5)), (27, (0.4, 3), (9, 67.5))],
-)
-def test_square_box(box_size, scale, expected):
-    """Test square box size calculation."""
-    assert square_box(box_size, scale) == expected
-
-
-@pytest.mark.parametrize(
-    "box_size, scale, ratio, expected",
+    "box_size, image_size, expected",
     [
-        (5, (0.5, 0.5), 4, ((20, 5), (5, 20))),
-        (15, (2, 5), 9, ((9, 2.5), (1, 22.5))),
-        (27, (0.4, 3), 0.25, ((4.5, 135), (18, 33.75))),
+        (5, (10, 10), (0.5, 0.5)),
+        (30, (240, 480), (0.0625, 0.125)),
+        (27, (270, 540), (0.05, 0.1)),
     ],
 )
-def test_rect_box(box_size, scale, ratio, expected):
+def test_square_box(box_size, image_size, expected):
+    """Test square box size calculation."""
+    assert square_box(box_size, image_size) == expected
+
+
+@pytest.mark.parametrize(
+    "box_size, image_size, ratio, expected",
+    [
+        (5, (10, 10), 4, ((1.0, 0.25), (0.25, 1.0))),
+        (30, (240, 480), 25, ((0.3125, 0.025), (0.0125, 0.625))),
+        (27, (270, 540), 0.25, ((0.025, 0.2), (0.1, 0.05))),
+    ],
+)
+def test_rect_box(box_size, image_size, ratio, expected):
     """Test rectangular box size calculation."""
-    assert rect_box(box_size, scale, ratio) == expected
+    assert rect_box(box_size, image_size, ratio) == expected
 
 
 @pytest.mark.parametrize(
@@ -88,10 +78,11 @@ def test_prior_boxes(rect_ratios, expected_length):
     """Test per-cell prior boxes."""
     boxes = list(
         prior_boxes(
+            image_size=(300, 300),
             indices=(0, 0),
-            scale=(1.0, 1.0),
             small_size=2,
             big_size=10,
+            stride=5,
             rect_ratios=rect_ratios,
         )
     )
@@ -106,10 +97,11 @@ def test_feature_map_prior_boxes(feature_map, rect_ratios, expected_length):
     """Test per-feature map prior boxes."""
     boxes = list(
         feature_map_prior_boxes(
-            feature_map,
-            scale=(1.0, 1.0),
+            image_size=(300, 300),
+            feature_map=feature_map,
             small_size=2,
             big_size=10,
+            stride=5,
             rect_ratios=rect_ratios,
         )
     )
