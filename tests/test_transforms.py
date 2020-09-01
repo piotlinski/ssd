@@ -38,11 +38,11 @@ def test_single_class_ssd_target_transform(sample_config):
 def test_data_transform(sample_config):
     """Test basic data transform."""
     transform = DataTransform(sample_config)
-    image = torch.zeros(3, 10, 10)
+    image = torch.zeros(10, 10, 3)
     bboxes = torch.tensor([[0.0, 2.0, 4.0, 6.0], [5.0, 5.0, 7.0, 7.0]])
     labels = torch.tensor([1, 2])
     t_image, t_bboxes, t_labels = transform(image=image, bboxes=bboxes, labels=labels)
-    assert t_image.shape == (sample_config.DATA.CHANNELS, *sample_config.DATA.SHAPE)
+    assert t_image.shape == (3, *sample_config.DATA.SHAPE)
     assert (torch.round(10 * t_bboxes) == bboxes).all()
     assert (t_labels == labels).all()
 
@@ -57,9 +57,9 @@ def test_adding_transforms(sample_config):
 def test_image_only_transform(sample_config):
     """Test transforming only image."""
     transform = DataTransform(sample_config)
-    image = torch.zeros(3, 10, 10)
+    image = torch.zeros(10, 10, 3)
     t_image, t_bboxes, t_labels = transform(image=image)
-    assert t_image.shape == (sample_config.DATA.CHANNELS, *sample_config.DATA.SHAPE)
+    assert t_image.shape == (3, *sample_config.DATA.SHAPE)
     assert t_bboxes is None
     assert t_labels is None
 
@@ -67,8 +67,8 @@ def test_image_only_transform(sample_config):
 def test_train_transform(sample_config):
     """Test train data transform."""
     transform = TrainDataTransform(sample_config)
-    image = torch.zeros(3, 10, 10)
+    image = torch.zeros(10, 10, 3)
     bboxes = torch.tensor([[0.0, 2.0, 4.0, 6.0], [5.0, 5.0, 7.0, 7.0]])
     labels = torch.tensor([1, 2])
     t_image, _, _ = transform(image=image, bboxes=bboxes, labels=labels)
-    assert t_image.shape == (sample_config.DATA.CHANNELS, *sample_config.DATA.SHAPE)
+    assert t_image.shape == (3, *sample_config.DATA.SHAPE)
