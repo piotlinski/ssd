@@ -106,11 +106,11 @@ class MultiBoxLoss(nn.Module):
         )
 
         positive_mask = labels > 0
-        n_positive = gt_locations[positive_mask, :].view(-1, 4).size(0)
         regression_loss = self.box_regression_loss(
             predicted=predicted_locations,
             ground_truth=gt_locations,
             positive_mask=positive_mask,
         )
 
+        n_positive = gt_locations[positive_mask, :].view(-1, 4).size(0)
         return regression_loss / n_positive, classification_loss / n_positive
