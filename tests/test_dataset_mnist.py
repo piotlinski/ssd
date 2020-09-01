@@ -5,7 +5,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from pyssd.data.datasets.mnist import MultiScaleMNIST
+from ssd.data.datasets.mnist import MultiScaleMNIST
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def sample_mnist_data():
     return data
 
 
-@patch("pyssd.data.datasets.mnist.h5py.File")
+@patch("ssd.data.datasets.mnist.h5py.File")
 def test_mnist_dataset_params(h5py_mock, sample_mnist_data):
     """Test MultiScaleMNIST dataset params."""
     h5py_mock.return_value.__enter__.return_value = sample_mnist_data
@@ -35,7 +35,7 @@ def test_mnist_dataset_params(h5py_mock, sample_mnist_data):
     assert ds.OBJECT_LABEL
 
 
-@patch("pyssd.data.datasets.mnist.h5py.File")
+@patch("ssd.data.datasets.mnist.h5py.File")
 def test_mnist_data_fetching(h5py_mock, sample_mnist_data):
     """Test data fetching from h5 file."""
     h5py_mock.return_value.__enter__.return_value = sample_mnist_data

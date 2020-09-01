@@ -2,7 +2,7 @@
 import pytest
 import torch
 
-from pyssd.loss import MultiBoxLoss
+from ssd.loss import MultiBoxLoss
 
 
 @pytest.fixture

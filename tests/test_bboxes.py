@@ -4,7 +4,7 @@ from math import e
 import pytest
 import torch
 
-from pyssd.data.bboxes import (
+from ssd.data.bboxes import (
     area,
     assign_priors,
     center_bbox_to_corner_bbox,

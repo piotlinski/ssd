@@ -5,7 +5,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from pyssd.modeling.backbones.vgg import VGG300, VGG512, L2Norm
+from ssd.modeling.backbones.vgg import VGG300, VGG512, L2Norm
 
 
 def verify_vgg_backbone(backbone: nn.ModuleList, batch_norm: bool):

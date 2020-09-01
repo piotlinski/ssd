@@ -1,7 +1,7 @@
 """Test visualization."""
 from unittest.mock import patch
 
-from pyssd.visualize import plot_image
+from ssd.visualize import plot_image
 
 
 @patch("matplotlib.pyplot.Axes.add_patch")

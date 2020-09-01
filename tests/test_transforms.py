@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import torch
 
-from pyssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
+from ssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
 
 
 def test_ssd_target_transform(sample_config):

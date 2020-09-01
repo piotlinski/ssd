@@ -2,7 +2,7 @@ import pytest
 import torch
 from yacs.config import CfgNode
 
-from pyssd.config import _C as cfg
+from ssd.config import _C as cfg
 
 
 @pytest.fixture

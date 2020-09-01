@@ -2,7 +2,7 @@
 import torch
 from torch import nn
 
-from pyssd.modeling.box_predictors.ssd import SSDBoxPredictor
+from ssd.modeling.box_predictors.ssd import SSDBoxPredictor
 
 
 def test_ssd_predictor(sample_config):
