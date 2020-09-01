@@ -1,11 +1,13 @@
 """VGG backbone for SSD."""
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
 from torch.nn import init
+from torchvision.models.vgg import vgg16, vgg16_bn
 from yacs.config import CfgNode
 
+from ssd.modeling.backbones.base import BaseBackbone
 from ssd.modeling.checkpoint import cache_url
 
 
@@ -32,180 +34,84 @@ class L2Norm(nn.Module):
         return self.weight.unsqueeze(0).unsqueeze(2).unsqueeze(3).expand_as(x) * x
 
 
-class VGG(nn.Module):
-    """Base class for VGG backbone."""
+class VGG300(BaseBackbone):
+    """VGG16 with 300x300 input backbone."""
 
-    def __init__(
-        self,
-        config: CfgNode,
-        vgg_config: List[Union[str, int]],
-        vgg_extras_config: List[Union[str, int]],
-        out_channels: List[int],
-    ):
-        super().__init__()
-        self.backbone = nn.ModuleList(
-            list(
-                self._vgg(
-                    vgg_config=vgg_config,
-                    in_channels=config.DATA.CHANNELS,
-                    batch_norm=config.MODEL.BATCH_NORM,
-                )
-            )
+    def __init__(self, config: CfgNode):
+        super().__init__(config=config, out_channels=[512, 1024, 512, 256, 256, 256])
+        self.l2_norm = L2Norm(n_channels=512, scale=20)
+
+    def _build_backbone(self):
+        """Build VGG16 backbone."""
+        torchvision_pretrained = (
+            self.config.MODEL.USE_PRETRAINED and not self.config.MODEL.PRETRAINED_URL
         )
-        self.extras = nn.ModuleList(
-            list(
-                self._vgg_extras(vgg_extras_config=vgg_extras_config, in_channels=1024,)
-            )
-        )
-        self.out_channels = out_channels
-        self.l2_norm = L2Norm(512, scale=20)
-        self.reset_params()
-        if config.MODEL.PRETRAINED_URL:
-            self.init_pretrain(
-                url=config.MODEL.PRETRAINED_URL,
-                pretrained_directory=(
-                    f"{config.ASSETS_DIR}/{config.MODEL.PRETRAINED_DIR}"
-                ),
-            )
+        if self.config.MODEL.BATCH_NORM:
+            backbone = vgg16_bn(pretrained=torchvision_pretrained).features[:-1]
+            backbone[23].ceil_mode = True
         else:
-            self.init_xavier()
+            backbone = vgg16(pretrained=torchvision_pretrained).features[:-1]
+            backbone[16].ceil_mode = True
 
-    def reset_params(self):
-        """Initialize model params."""
-        for module in self.extras.modules():
-            if isinstance(module, nn.Conv2d):
-                init.xavier_uniform_(module.weight)
-                init.zeros_(module.bias)
+        backbone.add_module("43", nn.MaxPool2d(kernel_size=3, stride=1, padding=1))
+        backbone.add_module(
+            "44",
+            nn.Conv2d(
+                in_channels=512, out_channels=1024, kernel_size=3, padding=6, dilation=6
+            ),
+        )
+        backbone.add_module("45", nn.ReLU(inplace=True))
+        backbone.add_module(
+            "46", nn.Conv2d(in_channels=1024, out_channels=1024, kernel_size=1)
+        )
+        backbone.add_module("47", nn.ReLU(inplace=True))
+        if self.config.MODEL.USE_PRETRAINED and self.config.MODEL.PRETRAINED_URL:
+            cached_file = cache_url(
+                self.config.MODEL.PRETRAINED_URL,
+                f"{self.config.ASSETS_DIR}/{self.config.MODEL.PRETRAINED_DIR}",
+            )
+            state_dict = torch.load(cached_file, map_location="cpu")
+            backbone.load_state_dict(state_dict)
+        return backbone
 
-    def init_pretrain(self, url: str, pretrained_directory: str):
-        """Initialize from a downloaded pretrained model."""
-        cached_file = cache_url(url, pretrained_directory)
-        state_dict = torch.load(cached_file, map_location="cpu")
-        self.backbone.load_state_dict(state_dict)
-
-    def init_xavier(self):
-        """Initialize backbone using xavier initializer."""
-        for module in self.backbone.modules():
-            if isinstance(module, nn.Conv2d):
-                init.xavier_uniform_(module.weight)
-                init.zeros_(module.bias)
+    def _build_extras(self):
+        """Build VGG16 300x300 extras."""
+        layers = [
+            nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
+            nn.Conv2d(
+                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
+        ]
+        extras = nn.ModuleList(layers)
+        return extras
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
-        l2_done = False
+        """Run data through VGG300 backbone."""
         features = []
-        convs = 0
+        relus = 0
+        l2norm_done = False
+
         for layer in self.backbone:
             x = layer(x)
-            if isinstance(layer, nn.Conv2d):
-                convs += 1
-            if convs == 10 and not l2_done:
+            if isinstance(layer, nn.ReLU):
+                relus += 1
+            if relus == 10 and not l2norm_done:
                 features.append(self.l2_norm(x))  # conv4_3 L2 norm
-                l2_done = True
+                l2norm_done = True
 
         features.append(x)  # vgg output
 
         for idx, layer in enumerate(self.extras):
-            x = nn.ReLU(inplace=True)(layer(x))
+            x = nn.functional.relu(layer(x), inplace=True)
             if idx % 2 == 1:
                 features.append(x)  # each SSD feature
 
         return tuple(features)
-
-    @staticmethod
-    def _vgg(
-        vgg_config: List[Union[str, int]],
-        in_channels: Union[str, int],
-        batch_norm: bool,
-    ) -> Iterable[nn.Module]:
-        """Prepare VGG backbone."""
-        for value in vgg_config:
-            if value == "M":
-                # standard max-pool
-                yield nn.MaxPool2d(kernel_size=2, stride=2)
-            elif value == "C":
-                # max-pool with ceil-mode
-                yield nn.MaxPool2d(kernel_size=2, stride=2, ceil_mode=True)
-            else:
-                # conv2d layer with batch-norm (optional) and ReLU
-                yield nn.Conv2d(in_channels, value, kernel_size=3, padding=1)
-                if batch_norm:
-                    yield nn.BatchNorm2d(value)
-                yield nn.ReLU(inplace=True)
-                in_channels = value
-        # common max-pool
-        yield nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
-        # next conv2d with ReLU
-        yield nn.Conv2d(512, 1024, kernel_size=3, padding=6, dilation=6)
-        yield nn.ReLU(inplace=True)
-        # final conv2d with ReLU
-        yield nn.Conv2d(1024, 1024, kernel_size=1)
-        yield nn.ReLU(inplace=True)
-
-    @staticmethod
-    def _vgg_extras(
-        vgg_extras_config: List[Union[str, int]], in_channels: Union[str, int],
-    ) -> Iterable[nn.Module]:
-        """Add extra layers for SSD feature scaling."""
-        kernel_size_flag = False
-        for idx, value in enumerate(vgg_extras_config):
-            if in_channels != "S":
-                if value == "S":
-                    # conv2d with stride
-                    yield nn.Conv2d(
-                        in_channels,
-                        vgg_extras_config[idx + 1],
-                        kernel_size=(1, 3)[kernel_size_flag],
-                        stride=2,
-                        padding=1,
-                    )
-                else:
-                    # standard conv2d
-                    yield nn.Conv2d(
-                        in_channels, value, kernel_size=(1, 3)[kernel_size_flag]
-                    )
-                kernel_size_flag = not kernel_size_flag
-            in_channels = value
-
-
-class VGG300(VGG):
-    """VGG300 backbone module."""
-
-    def __init__(self, config: CfgNode):
-        vgg300_config: List[Union[str, int]] = [
-            64,
-            64,
-            "M",
-            128,
-            128,
-            "M",
-            256,
-            256,
-            256,
-            "C",
-            512,
-            512,
-            512,
-            "M",
-            512,
-            512,
-            512,
-        ]
-        vgg300_extras_config: List[Union[str, int]] = [
-            256,
-            "S",
-            512,
-            128,
-            "S",
-            256,
-            128,
-            256,
-            128,
-            256,
-        ]
-        vgg300_out_channels = [512, 1024, 512, 256, 256, 256]
-        super().__init__(
-            config=config,
-            vgg_config=vgg300_config,
-            vgg_extras_config=vgg300_extras_config,
-            out_channels=vgg300_out_channels,
-        )

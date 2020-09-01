@@ -86,7 +86,11 @@ class DataTransform:
         self.transforms = transforms
         default_transforms = [
             Resize(*config.DATA.SHAPE),
-            Normalize(mean=config.DATA.PIXEL_MEAN, std=config.DATA.PIXEL_STD,),
+            Normalize(
+                mean=config.DATA.PIXEL_MEAN,
+                std=config.DATA.PIXEL_STD,
+                max_pixel_value=1.0,
+            ),
             ToTensor(),
         ]
         self.transforms.extend(default_transforms)
@@ -100,7 +104,6 @@ class DataTransform:
         bboxes: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]:
-        image = image.permute(1, 2, 0)
         if bboxes is not None and labels is not None:
             augment = Compose(
                 self.transforms,
@@ -125,7 +128,7 @@ class TrainDataTransform(DataTransform):
 
     def __init__(self, config: CfgNode, flip: bool = False):
         transforms = []
-        if config.DATA.CHANNELS == 3:
+        if config.DATA.AUGMENT_COLORS:
             # noinspection PyTypeChecker
             color_transforms = [
                 HueSaturationValue(

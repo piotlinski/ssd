@@ -31,8 +31,8 @@ def plot_image(
         ax = plt.gca()
     ax.axis("off")
     label_names = config.DATA.CLASS_LABELS
-    numpy_image = image.squeeze(0).numpy()
-    ax.imshow(numpy_image, cmap="gray")
+    numpy_image = image.numpy()
+    ax.imshow(numpy_image)
     if prediction is not None:
         colors = plt.cm.get_cmap("Dark2")
         cls_logits, bbox_pred = prediction
@@ -93,11 +93,15 @@ def plot_images_from_batch(
     confidence_thresholds = config.RUNNER.VIS_CONFIDENCE_THRESHOLDS
     fig = plt.Figure(figsize=(4 * (len(confidence_thresholds) + 1), 4 * n_examples))
     for idx, example_idx in enumerate(indices[:n_examples]):
+        image = image_batch[example_idx].permute(1, 2, 0)
+        denominator = torch.reciprocal(torch.tensor(config.DATA.PIXEL_STD))
+        image = image / denominator + torch.tensor(config.DATA.PIXEL_MEAN)
+        image.clamp_(min=0, max=1)
         subplot_idx = idx * (len(confidence_thresholds) + 1) + 1
         ax = fig.add_subplot(n_examples, len(confidence_thresholds) + 1, subplot_idx)
         plot_image(
             config,
-            image=image_batch[example_idx],
+            image=image,
             prediction=(gt_cls_logits[example_idx], gt_bbox_pred[example_idx],),
             ax=ax,
             confidence_threshold=0.1,
@@ -109,7 +113,7 @@ def plot_images_from_batch(
             )
             plot_image(
                 config,
-                image=image_batch[example_idx],
+                image=image,
                 prediction=(pred_cls_logits[example_idx], pred_bbox_pred[example_idx],),
                 ax=ax,
                 confidence_threshold=conf,

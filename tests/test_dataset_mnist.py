@@ -13,7 +13,7 @@ def sample_mnist_data():
     """Generate sample mnist data for mocking."""
     data = {
         "train": {
-            "images": np.random.randint(0, 255, (5, 512, 512)),
+            "images": np.random.randint(0, 255, (5, 512, 512, 3)),
             "boxes": np.random.randint(0, 512, (5, 12, 4)),
             "labels": np.random.randint(-1, 10, (5, 12)),
         }
@@ -42,6 +42,6 @@ def test_mnist_data_fetching(h5py_mock, sample_mnist_data):
     h5py_mock.return_value = sample_mnist_data
     images, boxes, labels = ds[0]
     wrongs = np.count_nonzero(inserted_labels[0] == -1)
-    assert images.shape == (1, 512, 512)
+    assert images.shape == (512, 512, 3)
     assert boxes.shape == (12 - wrongs, 4)
     assert labels.shape == (12 - wrongs,)

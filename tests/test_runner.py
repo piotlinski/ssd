@@ -104,7 +104,7 @@ def test_runner_eval(_test_loader_mock, _checkpointer_mock, sample_config):
 def test_model_prediction(_checkpointer_mock, data_length, sample_config):
     """Test predicting with SSD model."""
     runner = Runner(sample_config)
-    sample_inputs = torch.rand((data_length, 3, 300, 300))
+    sample_inputs = torch.rand((data_length, 300, 300, 3))
     result = runner.predict(inputs=sample_inputs)
     assert len(result) == data_length
     boxes, scores, labels = result[0]

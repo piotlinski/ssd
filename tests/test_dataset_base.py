@@ -19,14 +19,13 @@ def test_base_dataset_params():
 
 @patch("ssd.data.datasets.base.BaseDataset.__len__", return_value=10)
 @patch("ssd.data.datasets.base.BaseDataset.__getitem__")
-@pytest.mark.parametrize("channels", (1, 3))
-def test_calculating_dataset_stats(getitem_mock, _len_mock, channels):
+def test_calculating_dataset_stats(getitem_mock, _len_mock):
     """Verify if dataset stats are calculated properly."""
-    getitem_mock.return_value = torch.ones((channels, 5, 5)), None, None
+    getitem_mock.return_value = torch.ones((5, 5, 3)), None, None
     ds = BaseDataset(".")
     pixel_mean, pixel_std = ds.pixel_mean_std()
-    assert pixel_mean == channels * (1,)
-    assert pixel_std == channels * (0,)
+    assert pixel_mean == 3 * (1,)
+    assert pixel_std == 3 * (0,)
 
 
 @pytest.mark.parametrize(
