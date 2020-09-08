@@ -7,11 +7,11 @@ import torch.nn as nn
 from torchvision.ops.boxes import batched_nms
 from yacs.config import CfgNode
 
-from ssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
-from ssd.data.datasets import onehot_labels
-from ssd.data.priors import process_prior
-from ssd.modeling.backbones import backbones
-from ssd.modeling.box_predictors import box_predictors
+from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
+from pyssd.data.datasets import onehot_labels
+from pyssd.data.priors import process_prior
+from pyssd.modeling.backbones import backbones
+from pyssd.modeling.box_predictors import box_predictors
 
 logger = logging.getLogger(__name__)
 

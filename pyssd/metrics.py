@@ -5,8 +5,8 @@ from typing import Iterable, Tuple
 import torch
 from torchnet.meter import mAPMeter
 
-from ssd.data.bboxes import iou
-from ssd.data.datasets import onehot_labels
+from pyssd.data.bboxes import iou
+from pyssd.data.datasets import onehot_labels
 
 
 def assign_predictions(

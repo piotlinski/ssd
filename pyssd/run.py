@@ -11,13 +11,13 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm, trange
 from yacs.config import CfgNode
 
-from ssd.data.loaders import TestDataLoader, TrainDataLoader
-from ssd.data.transforms import DataTransform
-from ssd.loss import MultiBoxLoss
-from ssd.metrics import mean_average_precision
-from ssd.modeling.checkpoint import CheckPointer
-from ssd.modeling.model import SSD, process_model_prediction
-from ssd.visualize import plot_images_from_batch
+from pyssd.data.loaders import TestDataLoader, TrainDataLoader
+from pyssd.data.transforms import DataTransform
+from pyssd.loss import MultiBoxLoss
+from pyssd.metrics import mean_average_precision
+from pyssd.modeling.checkpoint import CheckPointer
+from pyssd.modeling.model import SSD, process_model_prediction
+from pyssd.visualize import plot_images_from_batch
 
 logger = logging.getLogger(__name__)
 
