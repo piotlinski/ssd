@@ -6,9 +6,9 @@ help: ## Show this help
 format: ## Run pre-commit hooks to format code
 	 pre-commit run --all-files
 
-args ?= -vvv --cov pyssd
+args ?= -n auto -vvv --cov pyssd
 test: ## Run tests
-	pytest -n auto $(args)
+	pytest $(args)
 
 shell: ## Run poetry shell
 	poetry shell
