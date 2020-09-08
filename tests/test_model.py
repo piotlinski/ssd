@@ -2,9 +2,9 @@
 import pytest
 import torch
 
-from ssd.modeling.backbones import backbones
-from ssd.modeling.box_predictors import box_predictors
-from ssd.modeling.model import SSD, process_model_output
+from pyssd.modeling.backbones import backbones
+from pyssd.modeling.box_predictors import box_predictors
+from pyssd.modeling.model import SSD, process_model_output
 
 
 def test_model_setup(sample_config):
