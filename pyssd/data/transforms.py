@@ -18,13 +18,13 @@ from albumentations import (
 from albumentations.pytorch import ToTensorV2 as ToTensor
 from yacs.config import CfgNode
 
-from ssd.data.bboxes import (
+from pyssd.data.bboxes import (
     assign_priors,
     center_bbox_to_corner_bbox,
     convert_boxes_to_locations,
     corner_bbox_to_center_bbox,
 )
-from ssd.data.priors import process_prior
+from pyssd.data.priors import process_prior
 
 
 class SSDTargetTransform:

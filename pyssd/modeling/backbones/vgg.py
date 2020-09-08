@@ -7,8 +7,8 @@ from torch.nn import init
 from torchvision.models.vgg import vgg16, vgg16_bn
 from yacs.config import CfgNode
 
-from ssd.modeling.backbones.base import BaseBackbone
-from ssd.modeling.checkpoint import cache_url
+from pyssd.modeling.backbones.base import BaseBackbone
+from pyssd.modeling.checkpoint import cache_url
 
 
 class L2Norm(nn.Module):
