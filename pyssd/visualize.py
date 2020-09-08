@@ -7,7 +7,7 @@ import torch
 from matplotlib import patches
 from yacs.config import CfgNode
 
-from ssd.modeling.model import process_model_prediction
+from pyssd.modeling.model import process_model_prediction
 
 
 def plot_image(

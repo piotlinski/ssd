@@ -2,7 +2,7 @@
 import pytest
 import torch
 
-from ssd.metrics import (
+from pyssd.metrics import (
     adjust_labels,
     assign_predictions,
     mean_average_precision,

@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 import torch
 
-from ssd.data.datasets.base import BaseDataset, onehot_labels
+from pyssd.data.datasets.base import BaseDataset, onehot_labels
 
 
 def test_base_dataset_params():
@@ -19,8 +19,8 @@ def test_base_dataset_params():
     assert ds.OBJECT_LABEL == ""
 
 
-@patch("ssd.data.datasets.base.BaseDataset.__len__", return_value=10)
-@patch("ssd.data.datasets.base.BaseDataset.__getitem__")
+@patch("pyssd.data.datasets.base.BaseDataset.__len__", return_value=10)
+@patch("pyssd.data.datasets.base.BaseDataset.__getitem__")
 def test_calculating_dataset_stats(getitem_mock, _len_mock):
     """Verify if dataset stats are calculated properly."""
     getitem_mock.return_value = torch.ones((5, 5, 3)), None, None

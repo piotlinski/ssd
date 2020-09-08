@@ -1,7 +1,7 @@
 """Test SSD data priors utils."""
 import pytest
 
-from ssd.data.priors import (
+from pyssd.data.priors import (
     all_prior_boxes,
     feature_map_prior_boxes,
     prior_boxes,
