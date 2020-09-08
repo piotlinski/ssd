@@ -3,9 +3,9 @@ from torch.utils.data import BatchSampler, DataLoader, RandomSampler
 from torch.utils.data._utils.collate import default_collate
 from yacs.config import CfgNode
 
-from ssd.data.datasets import datasets
-from ssd.data.datasets.base import DataTransformType
-from ssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
+from pyssd.data.datasets import datasets
+from pyssd.data.datasets.base import DataTransformType
+from pyssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
 
 
 def collate(batch):

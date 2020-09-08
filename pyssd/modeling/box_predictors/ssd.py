@@ -35,19 +35,25 @@ class BoxPredictor(nn.Module):
     def forward(self, features) -> Tuple[torch.Tensor, torch.Tensor]:
         cls_logits = []
         bbox_pred = []
+        batch_size = features[0].shape[0]
         for feature, cls_header, reg_header in zip(
             features, self.cls_headers, self.reg_headers
         ):
-            cls_logits.append(cls_header(feature).permute(0, 2, 3, 1).contiguous())
-            bbox_pred.append(reg_header(feature).permute(0, 2, 3, 1).contiguous())
+            cls_logits.append(
+                cls_header(feature)
+                .permute(0, 2, 3, 1)
+                .contiguous()
+                .view(batch_size, -1, self.config.DATA.N_CLASSES)
+            )
+            bbox_pred.append(
+                reg_header(feature)
+                .permute(0, 2, 3, 1)
+                .contiguous()
+                .view(batch_size, -1, 4)
+            )
 
-        batch_size = features[0].shape[0]
-        cls_logits = torch.cat(
-            [logit.view(logit.shape[0], -1) for logit in cls_logits], dim=1
-        ).view(batch_size, -1, self.config.DATA.N_CLASSES)
-        bbox_pred = torch.cat(
-            [reg.view(reg.shape[0], -1) for reg in bbox_pred], dim=1
-        ).view(batch_size, -1, 4)
+        cls_logits = torch.cat(cls_logits, dim=1)
+        bbox_pred = torch.cat(bbox_pred, dim=1)
 
         return cls_logits, bbox_pred
 

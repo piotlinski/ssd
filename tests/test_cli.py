@@ -4,20 +4,20 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
-from ssd.cli import download, evaluate, stats, train
-from ssd.data.datasets import BaseDataset
-from ssd.run import Runner
+from pyssd.cli import download, evaluate, stats, train
+from pyssd.data.datasets import BaseDataset
+from pyssd.run import Runner
 
 
-@patch("ssd.run.CheckPointer")
-@patch("ssd.run.SSD")
+@patch("pyssd.run.CheckPointer")
+@patch("pyssd.run.SSD")
 @pytest.mark.parametrize(
     "command, args, task_mock",
     [
-        (train, [], "ssd.cli.Runner.train"),
-        (evaluate, [], "ssd.cli.Runner.eval"),
-        (stats, [], "ssd.data.datasets.base.BaseDataset.pixel_mean_std"),
-        (download, [], "ssd.data.datasets.base.BaseDataset.download"),
+        (train, [], "pyssd.cli.Runner.train"),
+        (evaluate, [], "pyssd.cli.Runner.eval"),
+        (stats, [], "pyssd.data.datasets.base.BaseDataset.pixel_mean_std"),
+        (download, [], "pyssd.data.datasets.base.BaseDataset.download"),
     ],
 )
 def test_failed_commands_exit_code(

@@ -1,4 +1,4 @@
-# SSD
+# PySSD
 
 Single Shot Multi-Box Detector implementation in PyTorch
 

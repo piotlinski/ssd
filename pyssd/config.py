@@ -6,9 +6,9 @@ from typing import Optional
 from coolname import generate_slug
 from yacs.config import CfgNode
 
-from ssd.data.datasets import datasets
-from ssd.modeling.backbones import backbones
-from ssd.modeling.box_predictors import box_predictors
+from pyssd.data.datasets import datasets
+from pyssd.modeling.backbones import backbones
+from pyssd.modeling.box_predictors import box_predictors
 
 _C = CfgNode()
 
