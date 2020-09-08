@@ -8,7 +8,7 @@ format: ## Run pre-commit hooks to format code
 
 args ?= -vvv --cov ssd
 test: ## Run tests
-	pytest $(args)
+	pytest -n auto $(args)
 
 shell: ## Run poetry shell
 	poetry shell
