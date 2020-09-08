@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 import torch
 import torch.nn as nn
 from torch.nn import init
-from torchvision.models.vgg import vgg16, vgg16_bn
+from torchvision.models.vgg import vgg11, vgg11_bn, vgg16, vgg16_bn
 from yacs.config import CfgNode
 
 from pyssd.modeling.backbones.base import BaseBackbone
@@ -34,7 +34,65 @@ class L2Norm(nn.Module):
         return self.weight.unsqueeze(0).unsqueeze(2).unsqueeze(3).expand_as(x) * x
 
 
-class VGG(BaseBackbone):
+class VGGLite(BaseBackbone):
+    """VGG11 light backbone."""
+
+    def __init__(self, config: CfgNode):
+        super().__init__(config=config, out_channels=[512, 512, 512, 256, 256])
+
+    def _build_backbone(self) -> nn.Module:
+        """Build VGG11 backbone."""
+        torchvision_pretrained = (
+            self.config.MODEL.USE_PRETRAINED and not self.config.MODEL.PRETRAINED_URL
+        )
+        if self.config.MODEL.BATCH_NORM:
+            backbone = vgg11_bn(pretrained=torchvision_pretrained).features
+        else:
+            backbone = vgg11(pretrained=torchvision_pretrained).features
+        return backbone
+
+    def _build_extras(self) -> nn.Module:
+        """Build VGG11 300x300 extras."""
+        layers = [
+            nn.Conv2d(in_channels=512, out_channels=256, kernel_size=1),
+            nn.Conv2d(
+                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
+        ]
+        extras = nn.ModuleList(layers)
+        return extras
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+        """Run data through VGGLite backbone."""
+        features = []
+        maxpools = 0
+        mid_done = False
+
+        for layer in self.backbone:
+            x = layer(x)
+            if isinstance(layer, nn.MaxPool2d):
+                maxpools += 1
+            if maxpools == 4 and not mid_done:
+                features.append(x)
+                mid_done = True
+
+        features.append(x)  # vgg output
+
+        for idx, layer in enumerate(self.extras):
+            x = nn.functional.relu(layer(x), inplace=True)
+            if idx % 2 == 1:
+                features.append(x)  # each SSD feature
+
+        return tuple(features)
+
+
+class VGG16(BaseBackbone):
     """VGG16 backbone."""
 
     def __init__(self, config: CfgNode, out_channels: List[int]):
@@ -106,7 +164,7 @@ class VGG(BaseBackbone):
         return tuple(features)
 
 
-class VGG300(VGG):
+class VGG300(VGG16):
     """VGG16 with 300x300 input backbone."""
 
     def __init__(self, config: CfgNode):
@@ -132,7 +190,7 @@ class VGG300(VGG):
         return extras
 
 
-class VGG512(VGG):
+class VGG512(VGG16):
     """VGG16 with 512x512 input backbone."""
 
     def __init__(self, config: CfgNode):

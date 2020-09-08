@@ -5,7 +5,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from pyssd.modeling.backbones.vgg import VGG300, VGG512, L2Norm
+from pyssd.modeling.backbones.vgg import VGG300, VGG512, L2Norm, VGGLite
 
 
 def verify_vgg_backbone(backbone: nn.ModuleList, batch_norm: bool):
@@ -48,7 +48,7 @@ def test_vgg_defaults(backbone, extras_length, batch_norm, sample_config):
 
 
 @pytest.mark.parametrize("batch_norm", [True, False])
-@pytest.mark.parametrize("backbone", [VGG300, VGG512])
+@pytest.mark.parametrize("backbone", [VGG300, VGG512, VGGLite])
 def test_forward(backbone, batch_norm, sample_config):
     """Verify forward function in VGG300 backbone."""
     sample_config.MODEL.BATCH_NORM = batch_norm
