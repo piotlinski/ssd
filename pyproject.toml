@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "PySSD"
+name = "pyssd"
 version = "1.0.0"
 description = "Single Shot Multi-Box Detector implementation in PyTorch"
 authors = ["PiotrJZielinski <piotrekzie100@gmail.com>"]
