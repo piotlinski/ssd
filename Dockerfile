@@ -9,4 +9,4 @@ RUN pip install *.whl
 RUN rm -rf *.whl
 USER ${UID}:${GID}
 WORKDIR /app
-ENTRYPOINT ["pyssd"]
+ENTRYPOINT ["ssd"]
