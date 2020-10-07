@@ -1,5 +1,5 @@
 """VGG backbone for SSD."""
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -34,8 +34,8 @@ class L2Norm(nn.Module):
         return self.weight.unsqueeze(0).unsqueeze(2).unsqueeze(3).expand_as(x) * x
 
 
-class VGGLite(BaseBackbone):
-    """VGG11 light backbone."""
+class VGG11(BaseBackbone):
+    """VGG11 light backbone. Allows 300x300 input."""
 
     def __init__(self, config: CfgNode):
         super().__init__(config=config, out_channels=[512, 512, 512, 256, 256])
@@ -69,7 +69,7 @@ class VGGLite(BaseBackbone):
         return extras
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
-        """Run data through VGGLite backbone."""
+        """Run data through VGG11 backbone."""
         features = []
         maxpools = 0
         mid_done = False
@@ -93,9 +93,15 @@ class VGGLite(BaseBackbone):
 
 
 class VGG16(BaseBackbone):
-    """VGG16 backbone."""
+    """VGG16 backbone. Allows 300x300 or 512x512 input."""
 
-    def __init__(self, config: CfgNode, out_channels: List[int]):
+    def __init__(self, config: CfgNode):
+        if config.DATA.SHAPE == (300, 300):
+            out_channels = [512, 1024, 512, 256, 256, 256]
+        elif config.DATA.SHAPE == (512, 512):
+            out_channels = [512, 1024, 512, 256, 256, 256, 256]
+        else:
+            raise ValueError("Data shape must be either 300x300 or 512x512.")
         super().__init__(config=config, out_channels=out_channels)
         self.l2_norm = L2Norm(n_channels=512, scale=20)
 
@@ -140,8 +146,62 @@ class VGG16(BaseBackbone):
                     nn.init.zeros_(module.bias)
         return backbone
 
+    def _build_extras(self) -> nn.Module:
+        """Build extras for 300x300 input."""
+        layers = [
+            nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
+            nn.Conv2d(
+                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+        ]
+        if self.config.DATA.SHAPE == (300, 300):
+            layers.extend(
+                [
+                    nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
+                    nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+                    nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
+                ]
+            )
+        elif self.config.DATA.SHAPE == (512, 512):
+            layers.extend(
+                [
+                    nn.Conv2d(
+                        in_channels=128,
+                        out_channels=256,
+                        kernel_size=3,
+                        stride=2,
+                        padding=1,
+                    ),
+                    nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+                    nn.Conv2d(
+                        in_channels=128,
+                        out_channels=256,
+                        kernel_size=3,
+                        stride=2,
+                        padding=1,
+                    ),
+                    nn.Conv2d(
+                        in_channels=256, out_channels=128, kernel_size=1, stride=1
+                    ),
+                    nn.Conv2d(
+                        in_channels=128,
+                        out_channels=256,
+                        kernel_size=4,
+                        stride=1,
+                        padding=1,
+                    ),
+                ]
+            )
+        extras = nn.ModuleList(layers)
+        return extras
+
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
-        """Run data through VGG300 backbone."""
+        """Run data through VGG16 backbone."""
         features = []
         relus = 0
         l2norm_done = False
@@ -162,65 +222,3 @@ class VGG16(BaseBackbone):
                 features.append(x)  # each SSD feature
 
         return tuple(features)
-
-
-class VGG300(VGG16):
-    """VGG16 with 300x300 input backbone."""
-
-    def __init__(self, config: CfgNode):
-        super().__init__(config=config, out_channels=[512, 1024, 512, 256, 256, 256])
-
-    def _build_extras(self) -> nn.Module:
-        """Build VGG16 300x300 extras."""
-        layers = [
-            nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
-            nn.Conv2d(
-                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
-            ),
-            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
-            nn.Conv2d(
-                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
-            ),
-            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
-            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
-        ]
-        extras = nn.ModuleList(layers)
-        return extras
-
-
-class VGG512(VGG16):
-    """VGG16 with 512x512 input backbone."""
-
-    def __init__(self, config: CfgNode):
-        super().__init__(
-            config=config, out_channels=[512, 1024, 512, 256, 256, 256, 256]
-        )
-
-    def _build_extras(self) -> nn.Module:
-        """Build VGG16 512x512 extras."""
-        layers = [
-            nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
-            nn.Conv2d(
-                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
-            ),
-            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
-            nn.Conv2d(
-                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
-            ),
-            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
-            nn.Conv2d(
-                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
-            ),
-            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
-            nn.Conv2d(
-                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
-            ),
-            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1, stride=1),
-            nn.Conv2d(
-                in_channels=128, out_channels=256, kernel_size=4, stride=1, padding=1
-            ),
-        ]
-        extras = nn.ModuleList(layers)
-        return extras
