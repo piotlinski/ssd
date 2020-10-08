@@ -1,11 +1,11 @@
-"""Test VGG300 backbone."""
+"""Test VGG backbone."""
 from collections import Counter
 
 import pytest
 import torch
 import torch.nn as nn
 
-from pyssd.modeling.backbones.vgg import VGG300, VGG512, L2Norm
+from pyssd.modeling.backbones.vgg import VGG11, VGG16, L2Norm
 
 
 def verify_vgg_backbone(backbone: nn.ModuleList, batch_norm: bool):
@@ -36,11 +36,12 @@ def test_l2norm(n_channels, scale):
 
 
 @pytest.mark.parametrize("batch_norm", [True, False])
-@pytest.mark.parametrize("backbone, extras_length", [(VGG300, 8), (VGG512, 10)])
-def test_vgg_defaults(backbone, extras_length, batch_norm, sample_config):
-    """Verify layers in VGG300 backbone."""
+@pytest.mark.parametrize("shape, extras_length", [((300, 300), 8), ((512, 512), 10)])
+def test_vgg16_defaults(shape, extras_length, batch_norm, sample_config):
+    """Verify layers in VGG16 backbone."""
+    sample_config.DATA.SHAPE = shape
     sample_config.MODEL.BATCH_NORM = batch_norm
-    vgg = backbone(sample_config)
+    vgg = VGG16(sample_config)
     verify_vgg_backbone(vgg.backbone, batch_norm=batch_norm)
 
     assert len(vgg.extras) == extras_length
@@ -48,9 +49,9 @@ def test_vgg_defaults(backbone, extras_length, batch_norm, sample_config):
 
 
 @pytest.mark.parametrize("batch_norm", [True, False])
-@pytest.mark.parametrize("backbone", [VGG300, VGG512])
+@pytest.mark.parametrize("backbone", [VGG16, VGG11])
 def test_forward(backbone, batch_norm, sample_config):
-    """Verify forward function in VGG300 backbone."""
+    """Verify forward function in VGG backbones."""
     sample_config.MODEL.BATCH_NORM = batch_norm
     vgg = backbone(sample_config)
     inputs = torch.rand((1, 3, 300, 300))
