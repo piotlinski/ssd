@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def cache_url(url: str, pretrained_directory: str, progress: bool = True) -> Path:
-    """ Loads the Torch serialized object at the given URL.
+    """Loads the Torch serialized object at the given URL.
     If the object is already present in `pretrained_dir`, it's deserialized and
     returned. The filename part of the URL should follow the naming convention
     ``filename-<sha256>.ext`` where ``<sha256>`` is the first eight or more
@@ -101,7 +101,7 @@ class CheckPointer:
             return None
 
     def save(self, filename: str):
-        """ Save model to checkpoint and tag it.
+        """Save model to checkpoint and tag it.
 
         :param filename: checkpoint name
         """
@@ -110,7 +110,7 @@ class CheckPointer:
         self.last_checkpoint_file.write_text(str(save_file))
 
     def load(self, filename: Optional[str] = None):
-        """ Load model checkpoint. If no name provided - use latest.
+        """Load model checkpoint. If no name provided - use latest.
 
         :param filename: optional checkpoint file to use
         """
