@@ -8,13 +8,12 @@ import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.optimizer import Optimizer
 from torch.utils.tensorboard import SummaryWriter
-from tqdm.auto import tqdm, trange
+from tqdm.auto import trange
 from yacs.config import CfgNode
 
-from pyssd.data.loaders import TestDataLoader, TrainDataLoader
+from pyssd.data.loaders import EvalDataLoader, TrainDataLoader
 from pyssd.data.transforms import DataTransform
 from pyssd.loss import MultiBoxLoss
-from pyssd.metrics import mean_average_precision
 from pyssd.modeling.checkpoint import CheckPointer
 from pyssd.modeling.model import SSD, process_model_prediction
 from pyssd.visualize import plot_images_from_batch
@@ -37,7 +36,7 @@ class PlateauWarmUpLRScheduler(ReduceLROnPlateau):
 
     @staticmethod
     def linear_warmup_factor(step: int, warmup_steps: int):
-        """ Get linear factor to multiply learning rate during warmup.
+        """Get linear factor to multiply learning rate during warmup.
 
         :param step: current step
         :param warmup_steps: number of steps on which LR will be increased
@@ -46,7 +45,7 @@ class PlateauWarmUpLRScheduler(ReduceLROnPlateau):
         return min(1.0, (step + 1) / warmup_steps)
 
     def dampen(self, step: Optional[int] = None):
-        """ Dampen the learning rates.
+        """Dampen the learning rates.
 
         :param step: current step (optional)
         """
@@ -88,6 +87,9 @@ class Runner:
                 )
             )
 
+        self.train_data_loader = TrainDataLoader(self.config)
+        self.eval_data_loader = EvalDataLoader(self.config)
+
         self.model.to(self.device)
 
         self.criterion = MultiBoxLoss(config.MODEL.NEGATIVE_POSITIVE_RATIO)
@@ -111,17 +113,16 @@ class Runner:
             patience=self.config.RUNNER.LR_REDUCE_PATIENCE,
             warmup_steps=self.config.RUNNER.LR_WARMUP_STEPS,
         )
-        data_loader = TrainDataLoader(self.config)
 
         global_step = 0
 
         losses = []
         regression_losses = []
         classification_losses = []
-        log_loss = float("nan")
         epoch_loss = float("nan")
 
-        metrics = []
+        train_description = "TRAIN "
+        eval_description = "EVAL  "
 
         logger.info(
             "Starting training %s for %d epochs",
@@ -131,7 +132,7 @@ class Runner:
 
         with trange(
             n_epochs,
-            desc="               TRAINING",
+            desc=train_description,
             unit="epoch",
             postfix=dict(step=global_step, loss=epoch_loss),
         ) as epoch_pbar:
@@ -140,121 +141,73 @@ class Runner:
                 epoch += 1
                 visualize = epoch % self.config.RUNNER.VIS_EPOCHS == 0
 
-                with tqdm(
-                    data_loader,
-                    desc=f"TRAIN |      epoch {epoch:4d}",
-                    unit="step",
-                    postfix=dict(loss=log_loss),
-                ) as step_pbar:
-                    for images, locations, labels in step_pbar:
-                        global_step += 1
-                        lr_scheduler.dampen()
-                        images = images.to(self.device)
-                        locations = locations.to(self.device)
-                        labels = labels.to(self.device)
+                for images, locations, labels in self.train_data_loader:
+                    global_step += 1
+                    lr_scheduler.dampen()
+                    images = images.to(self.device)
+                    locations = locations.to(self.device)
+                    labels = labels.to(self.device)
 
-                        cls_logits, bbox_pred = self.model(images)
+                    cls_logits, bbox_pred = self.model(images)
 
-                        regression_loss, classification_loss = self.criterion(
-                            confidence=cls_logits,
-                            predicted_locations=bbox_pred,
-                            labels=labels,
-                            gt_locations=locations,
-                        )
-                        loss = regression_loss + classification_loss
-                        optimizer.zero_grad()
-                        loss.backward()
-                        optimizer.step()
+                    regression_loss, classification_loss = self.criterion(
+                        confidence=cls_logits,
+                        predicted_locations=bbox_pred,
+                        labels=labels,
+                        gt_locations=locations,
+                    )
+                    loss = regression_loss + classification_loss
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
-                        epoch_losses.append(loss.item())
-                        losses.append(loss.item())
+                    epoch_losses.append(loss.item())
+                    losses.append(loss.item())
 
-                        regression_losses.append(regression_loss.item())
-                        classification_losses.append(classification_loss.item())
+                    regression_losses.append(regression_loss.item())
+                    classification_losses.append(classification_loss.item())
 
-                        if self.config.RUNNER.CALCULATE_MAP_TRAIN:
-                            gt_boxes_batch, _, gt_labels_batch = zip(
-                                *process_model_prediction(
-                                    config=self.config,
-                                    cls_logits=labels,
-                                    bbox_pred=locations,
-                                )
+                    if global_step % self.config.RUNNER.LOG_STEP == 0:
+                        log_loss = np.average(losses)
+                        log_regression_loss = np.average(regression_losses)
+                        log_classification_loss = np.average(classification_losses)
+                        losses = []
+                        regression_losses = []
+                        classification_losses = []
+                        epoch_loss = np.average(epoch_losses)
+
+                        if self.tb_writer is not None:
+                            self.tb_writer.add_scalar(
+                                tag="loss-total/train",
+                                scalar_value=log_loss,
+                                global_step=global_step,
                             )
-                            (
-                                pred_boxes_batch,
-                                pred_scores_batch,
-                                pred_labels_batch,
-                            ) = zip(
-                                *process_model_prediction(
-                                    config=self.config,
-                                    cls_logits=cls_logits.detach(),
-                                    bbox_pred=bbox_pred.detach(),
-                                )
+                            self.tb_writer.add_scalar(
+                                tag="loss-regression/train",
+                                scalar_value=log_regression_loss,
+                                global_step=global_step,
                             )
-                            metrics.append(
-                                mean_average_precision(
-                                    gt_boxes_batch=gt_boxes_batch,
-                                    gt_labels_batch=gt_labels_batch,
-                                    pred_boxes_batch=pred_boxes_batch,
-                                    pred_scores_batch=pred_scores_batch,
-                                    pred_labels_batch=pred_labels_batch,
-                                    n_classes=self.config.DATA.N_CLASSES,
-                                    iou_threshold=self.config.RUNNER.MAP_IOU_THRESHOLD,
-                                )
+                            self.tb_writer.add_scalar(
+                                tag="loss-classification/train",
+                                scalar_value=log_classification_loss,
+                                global_step=global_step,
                             )
-
-                        if global_step % self.config.RUNNER.LOG_STEP == 0:
-                            log_loss = np.average(losses)
-                            log_regression_loss = np.average(regression_losses)
-                            log_classification_loss = np.average(classification_losses)
-                            losses = []
-                            regression_losses = []
-                            classification_losses = []
-                            epoch_loss = np.average(epoch_losses)
-
-                            if self.config.RUNNER.CALCULATE_MAP_TRAIN:
-                                metric = np.average(metrics)
-                                metrics = []
-
-                            if self.tb_writer is not None:
-                                self.tb_writer.add_scalar(
-                                    tag="loss-total/train",
-                                    scalar_value=log_loss,
-                                    global_step=global_step,
-                                )
-                                self.tb_writer.add_scalar(
-                                    tag="loss-regression/train",
-                                    scalar_value=log_regression_loss,
-                                    global_step=global_step,
-                                )
-                                self.tb_writer.add_scalar(
-                                    tag="loss-classification/train",
-                                    scalar_value=log_classification_loss,
-                                    global_step=global_step,
-                                )
-                                self.tb_writer.add_scalar(
-                                    tag="lr",
-                                    scalar_value=optimizer.param_groups[0]["lr"],
-                                    global_step=global_step,
-                                )
-                                if self.config.RUNNER.CALCULATE_MAP_TRAIN:
-                                    self.tb_writer.add_scalar(
-                                        tag="mAP/train",
-                                        scalar_value=metric,
+                            self.tb_writer.add_scalar(
+                                tag="lr",
+                                scalar_value=optimizer.param_groups[0]["lr"],
+                                global_step=global_step,
+                            )
+                            if self.config.RUNNER.TRACK_MODEL_PARAMS:
+                                for name, params in self.model.named_parameters():
+                                    module, *sub, param_type = name.split(".")
+                                    self.tb_writer.add_histogram(
+                                        tag=f"{param_type}"
+                                        f"/{module}_{'-'.join(sub)}",
+                                        values=params,
                                         global_step=global_step,
                                     )
-                                if self.config.RUNNER.TRACK_MODEL_PARAMS:
-                                    for name, params in self.model.named_parameters():
-                                        module, *sub, param_type = name.split(".")
-                                        self.tb_writer.add_histogram(
-                                            tag=f"{param_type}"
-                                            f"/{module}_{'-'.join(sub)}",
-                                            values=params,
-                                            global_step=global_step,
-                                        )
 
-                        epoch_pbar.set_postfix(step=global_step, loss=epoch_loss)
-                        step_pbar.set_postfix(loss=log_loss)
+                    epoch_pbar.set_postfix(step=global_step, loss=epoch_loss)
 
                 if self.tb_writer is not None and visualize:
                     self.tb_writer.add_figure(
@@ -269,6 +222,7 @@ class Runner:
                         ),
                         global_step=global_step,
                     )
+                epoch_pbar.set_description(eval_description)
                 validation_loss = self.eval(
                     global_step=global_step, visualize=visualize
                 )
@@ -279,6 +233,7 @@ class Runner:
                     f"-{global_step:05d}"
                 )
                 self.model.train()
+                epoch_pbar.set_description(train_description)
 
                 if (
                     epoch > self.config.RUNNER.LR_REDUCE_SKIP_EPOCHS
@@ -293,62 +248,27 @@ class Runner:
     def eval(self, global_step: int = 0, visualize: bool = False) -> float:
         """Evaluate the model."""
         self.model.eval()
-        data_loader = TestDataLoader(self.config)
         regression_losses = []
         classification_losses = []
         losses = []
-        metrics = []
-        with tqdm(
-            data_loader,
-            desc=f"EVAL  | step {global_step:10d}",
-            unit="step",
-            postfix=dict(loss=float("nan")),
-        ) as step_pbar:
-            for images, locations, labels in step_pbar:
-                images = images.to(self.device)
-                locations = locations.to(self.device)
-                labels = labels.to(self.device)
+        for images, locations, labels in self.eval_data_loader:
+            images = images.to(self.device)
+            locations = locations.to(self.device)
+            labels = labels.to(self.device)
 
-                with torch.no_grad():
-                    cls_logits, bbox_pred = self.model(images)
+            with torch.no_grad():
+                cls_logits, bbox_pred = self.model(images)
 
-                    regression_loss, classification_loss = self.criterion(
-                        confidence=cls_logits,
-                        predicted_locations=bbox_pred,
-                        labels=labels,
-                        gt_locations=locations,
-                    )
-                    loss = regression_loss + classification_loss
-                regression_losses.append(regression_loss.item())
-                classification_losses.append(classification_loss.item())
-                losses.append(loss.item())
-
-                if self.config.RUNNER.CALCULATE_MAP_EVAL:
-                    gt_boxes_batch, _, gt_labels_batch = zip(
-                        *process_model_prediction(
-                            config=self.config, cls_logits=labels, bbox_pred=locations,
-                        )
-                    )
-                    pred_boxes_batch, pred_scores_batch, pred_labels_batch = zip(
-                        *process_model_prediction(
-                            config=self.config,
-                            cls_logits=cls_logits.detach(),
-                            bbox_pred=bbox_pred.detach(),
-                        )
-                    )
-                    metrics.append(
-                        mean_average_precision(
-                            gt_boxes_batch=gt_boxes_batch,
-                            gt_labels_batch=gt_labels_batch,
-                            pred_boxes_batch=pred_boxes_batch,
-                            pred_scores_batch=pred_scores_batch,
-                            pred_labels_batch=pred_labels_batch,
-                            n_classes=self.config.DATA.N_CLASSES,
-                            iou_threshold=self.config.RUNNER.MAP_IOU_THRESHOLD,
-                        )
-                    )
-
-                step_pbar.set_postfix(loss=np.average(losses))
+                regression_loss, classification_loss = self.criterion(
+                    confidence=cls_logits,
+                    predicted_locations=bbox_pred,
+                    labels=labels,
+                    gt_locations=locations,
+                )
+                loss = regression_loss + classification_loss
+            regression_losses.append(regression_loss.item())
+            classification_losses.append(classification_loss.item())
+            losses.append(loss.item())
 
         if self.tb_writer is not None:
             self.tb_writer.add_scalar(
@@ -366,12 +286,6 @@ class Runner:
                 scalar_value=np.average(classification_losses),
                 global_step=global_step,
             )
-            if self.config.RUNNER.CALCULATE_MAP_EVAL:
-                self.tb_writer.add_scalar(
-                    tag="mAP/eval",
-                    scalar_value=np.average(metrics),
-                    global_step=global_step,
-                )
             if visualize:
                 self.tb_writer.add_figure(
                     tag="predictions/eval",
@@ -391,7 +305,7 @@ class Runner:
     def predict(
         self, inputs: torch.Tensor
     ) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
-        """ Perform predictions on given inputs.
+        """Perform predictions on given inputs.
 
         :param inputs: batch of images
         :return: model prediction
