@@ -42,7 +42,11 @@ def test_downloading_model(download_mock, hash_regex_mock, _mkdir_mock, _exists_
 @patch("ssd.modeling.checkpoint.HASH_REGEX")
 @patch("ssd.modeling.checkpoint.urlparse")
 def test_handling_caffe_model(
-    urlparse_mock, hash_regex_mock, download_mock, _mkdir_mock, _exists_mock,
+    urlparse_mock,
+    hash_regex_mock,
+    download_mock,
+    _mkdir_mock,
+    _exists_mock,
 ):
     """Test if caffe models are handled correctly."""
     urlparse_mock.return_value.path = "model_final.pkl"

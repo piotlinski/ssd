@@ -81,7 +81,7 @@ class BaseDataset(data.Dataset):
 
 
 def onehot_labels(labels: torch.Tensor, n_classes: int):
-    """ Convert loaded labels to one-hot form.
+    """Convert loaded labels to one-hot form.
 
     :param labels: tensor of shape (batch_size x n_cells) with integers indicating class
     :param n_classes: number of classes
