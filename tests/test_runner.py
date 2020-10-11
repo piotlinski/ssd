@@ -39,7 +39,7 @@ def sample_optimizer():
 
 
 @patch("pyssd.run.CheckPointer")
-@patch("pyssd.run.TestDataLoader")
+@patch("pyssd.run.EvalDataLoader")
 @patch("pyssd.run.TrainDataLoader")
 @patch("pyssd.run.torch.cuda.is_available", return_value=False)
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
@@ -58,7 +58,7 @@ def test_runner_device_cpu(
 
 
 @patch("pyssd.run.CheckPointer")
-@patch("pyssd.run.TestDataLoader")
+@patch("pyssd.run.EvalDataLoader")
 @patch("pyssd.run.TrainDataLoader")
 @patch("pyssd.run.torch.cuda.is_available", return_value=True)
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
@@ -77,7 +77,7 @@ def test_runner_device_gpu(
 
 
 @patch("pyssd.run.CheckPointer")
-@patch("pyssd.run.TestDataLoader")
+@patch("pyssd.run.EvalDataLoader")
 @patch("pyssd.run.TrainDataLoader", return_value=sample_data_loader())
 def test_runner_train(
     _train_loader_mock, _test_loader_mock, _checkpointer_mock, sample_config,
@@ -90,7 +90,7 @@ def test_runner_train(
 
 
 @patch("pyssd.run.CheckPointer")
-@patch("pyssd.run.TestDataLoader", return_value=sample_data_loader())
+@patch("pyssd.run.EvalDataLoader", return_value=sample_data_loader())
 def test_runner_eval(_test_loader_mock, _checkpointer_mock, sample_config):
     """Test evaluating SSD model."""
     runner = Runner(sample_config)

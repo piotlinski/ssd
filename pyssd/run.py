@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm, trange
 from yacs.config import CfgNode
 
-from pyssd.data.loaders import TestDataLoader, TrainDataLoader
+from pyssd.data.loaders import EvalDataLoader, TrainDataLoader
 from pyssd.data.transforms import DataTransform
 from pyssd.loss import MultiBoxLoss
 from pyssd.metrics import mean_average_precision
@@ -88,6 +88,9 @@ class Runner:
                 )
             )
 
+        self.train_data_loader = TrainDataLoader(self.config)
+        self.eval_data_loader = EvalDataLoader(self.config)
+
         self.model.to(self.device)
 
         self.criterion = MultiBoxLoss(config.MODEL.NEGATIVE_POSITIVE_RATIO)
@@ -111,7 +114,6 @@ class Runner:
             patience=self.config.RUNNER.LR_REDUCE_PATIENCE,
             warmup_steps=self.config.RUNNER.LR_WARMUP_STEPS,
         )
-        data_loader = TrainDataLoader(self.config)
 
         global_step = 0
 
@@ -141,7 +143,7 @@ class Runner:
                 visualize = epoch % self.config.RUNNER.VIS_EPOCHS == 0
 
                 with tqdm(
-                    data_loader,
+                    self.train_data_loader,
                     desc=f"TRAIN |      epoch {epoch:4d}",
                     unit="step",
                     postfix=dict(loss=log_loss),
@@ -293,13 +295,12 @@ class Runner:
     def eval(self, global_step: int = 0, visualize: bool = False) -> float:
         """Evaluate the model."""
         self.model.eval()
-        data_loader = TestDataLoader(self.config)
         regression_losses = []
         classification_losses = []
         losses = []
         metrics = []
         with tqdm(
-            data_loader,
+            self.eval_data_loader,
             desc=f"EVAL  | step {global_step:10d}",
             unit="step",
             postfix=dict(loss=float("nan")),
