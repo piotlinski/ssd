@@ -1,5 +1,4 @@
-# using this since pytorch images still use python 3.7
-FROM anibali/pytorch:1.5.0-cuda10.2
+FROM piotrekzie100/pytorch:1.6.0-py38-cuda10.2
 USER root
 ARG UID=1000
 ARG GID=1000
