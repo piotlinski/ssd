@@ -9,6 +9,7 @@ from pyssd.data.datasets import BaseDataset
 from pyssd.run import Runner
 
 
+@patch("pyssd.data.loaders.DefaultDataLoader.__init__")
 @patch("pyssd.run.CheckPointer")
 @patch("pyssd.run.SSD")
 @pytest.mark.parametrize(
@@ -21,7 +22,7 @@ from pyssd.run import Runner
     ],
 )
 def test_failed_commands_exit_code(
-    _ssd_mock, _checkpointer_mock, command, args, task_mock, sample_config
+    _ssd_mock, _checkpointer_mock, _loader_mock, command, args, task_mock, sample_config
 ):
     """Test if raising unhandled exception return exit code 1"""
     runner = CliRunner()
@@ -34,7 +35,11 @@ def test_failed_commands_exit_code(
         result = runner.invoke(
             command,
             args,
-            obj={"config": sample_config, "runner": ssd_runner, "dataset": dataset,},
+            obj={
+                "config": sample_config,
+                "runner": ssd_runner,
+                "dataset": dataset,
+            },
         )
 
     assert result.exit_code == 1

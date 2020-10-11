@@ -21,7 +21,7 @@ class MultiBoxLoss(nn.Module):
     def hard_negative_mining(
         loss: torch.Tensor, labels: torch.Tensor, negative_positive_ratio: float
     ):
-        """ Suppress the presence of a large number of negative predictions
+        """Suppress the presence of a large number of negative predictions
         Works on image level not batch level. For any example/image, it keeps all the
          positive predictions and cuts the number of negative predictions to make sure
          the ratio between the negative examples and positive examples is no more than
@@ -47,7 +47,7 @@ class MultiBoxLoss(nn.Module):
     def classification_loss(
         self, predictions: torch.Tensor, labels: torch.Tensor
     ) -> torch.Tensor:
-        """ Calculate classification loss
+        """Calculate classification loss
 
         :param predictions: (batch_size, num_priors, num_classes) class predictions
         :param labels: (batch_size, num_priors) real labels of all the priors
@@ -71,7 +71,7 @@ class MultiBoxLoss(nn.Module):
     def box_regression_loss(
         predicted: torch.Tensor, ground_truth: torch.Tensor, positive_mask: torch.Tensor
     ) -> torch.Tensor:
-        """ Calculate bounding box regression loss (smooth L1 loss)
+        """Calculate bounding box regression loss (smooth L1 loss)
 
         :param predicted: (batch_size, num_priors, 4) predicted locations
         :param ground_truth: (batch_size, num_priors, 4) real boxes corresponding all
@@ -92,7 +92,7 @@ class MultiBoxLoss(nn.Module):
         labels: torch.tensor,
         gt_locations: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """ Calculate loss
+        """Calculate loss
 
         :param confidence: (batch_size, num_priors, num_classes) class predictions
         :param predicted_locations: (batch_size, num_priors, 4) predicted locations

@@ -9,7 +9,7 @@ import torch
 def unit_center(
     indices: Tuple[int, int], image_size: Tuple[int, int], stride: int
 ) -> Tuple[float, float]:
-    """ Get single prior unit center.
+    """Get single prior unit center.
 
     :param indices: current unit's indices tuple
     :param image_size: image shape tuple
@@ -24,7 +24,7 @@ def unit_center(
 
 
 def square_box(box_size: float, image_size: Tuple[float, float]) -> Tuple[float, float]:
-    """ Calculate normalized square box shape.
+    """Calculate normalized square box shape.
 
     :param box_size: initial size
     :param image_size: image shape tuple
@@ -36,7 +36,7 @@ def square_box(box_size: float, image_size: Tuple[float, float]) -> Tuple[float,
 def rect_box(
     box_size: int, image_size: Tuple[float, float], ratio: float
 ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-    """ Calculate rectangular box shapes.
+    """Calculate rectangular box shapes.
 
     :param box_size: initial box size
     :param image_size: image shape tuple
@@ -59,7 +59,7 @@ def prior_boxes(
     stride: int,
     rect_ratios: Tuple[int, ...],
 ) -> Iterable[Tuple[float, float, float, float]]:
-    """ Get prior boxes for given cell.
+    """Get prior boxes for given cell.
 
     :param image_size: image shape tuple
     :param indices: current unit's indices tuple
@@ -93,7 +93,7 @@ def feature_map_prior_boxes(
     stride: int,
     rect_ratios: Tuple[int, ...],
 ) -> Iterable[Tuple[float, float, float, float]]:
-    """ Get prior boxes for given feature map.
+    """Get prior boxes for given feature map.
 
     :param image_size: image shape tuple
     :param feature_map: number of cells in feature map grid
@@ -123,7 +123,7 @@ def all_prior_boxes(
     strides: Tuple[int, ...],
     aspect_ratios: Tuple[Tuple[int, ...], ...],
 ) -> Iterable[Tuple[float, float, float, float]]:
-    """ Get prior boxes for all feature maps.
+    """Get prior boxes for all feature maps.
 
     :param image_size: size of the input image
     :param feature_maps: output channels of each backbone output
@@ -156,7 +156,7 @@ def process_prior(
     aspect_ratios: Tuple[Tuple[int, ...], ...],
     clip: bool,
 ):
-    """ Generate SSD Prior Boxes (center, height and width of the priors)
+    """Generate SSD Prior Boxes (center, height and width of the priors)
 
     :param image_size: size of the input image
     :param feature_maps: output channels of each backbone output
