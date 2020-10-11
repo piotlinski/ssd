@@ -25,7 +25,8 @@ class SSD(nn.Module):
         self.backbone = backbone(config)
         predictor = box_predictors[config.MODEL.BOX_PREDICTOR]
         self.predictor = predictor(
-            config, backbone_out_channels=self.backbone.out_channels,
+            config,
+            backbone_out_channels=self.backbone.out_channels,
         )
 
     def forward(self, images):
@@ -41,7 +42,7 @@ def process_model_output(
     nms_threshold: float,
     max_per_image: int,
 ) -> Iterable[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
-    """ Process model output with non-max suppression.
+    """Process model output with non-max suppression.
 
     :param detections: tuple of class logits and bounding box regressions
     :param image_size: input image shape tuple
@@ -86,7 +87,10 @@ def process_model_output(
         # as of torchvision 0.6.0, cuda nms is broken (int overflow)
         try:
             keep_mask = batched_nms(
-                boxes=boxes, scores=scores, idxs=labels, iou_threshold=nms_threshold,
+                boxes=boxes,
+                scores=scores,
+                idxs=labels,
+                iou_threshold=nms_threshold,
             )
         except RuntimeError:
             logger.warning("Torchvision NMS CUDA int overflow. Falling back to CPU.")
@@ -108,7 +112,7 @@ def process_model_output(
 def process_model_prediction(
     config: CfgNode, cls_logits: torch.Tensor, bbox_pred: torch.Tensor
 ) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
-    """ Get readable results from model predictions.
+    """Get readable results from model predictions.
 
     :param config: SSD configuration
     :param cls_logits: class predictions from model

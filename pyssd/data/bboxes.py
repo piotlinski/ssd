@@ -10,7 +10,7 @@ def convert_locations_to_boxes(
     center_variance: float,
     size_variance: float,
 ) -> torch.Tensor:
-    """ Convert regressional location results of SSD into boxes in the form of
+    """Convert regressional location results of SSD into boxes in the form of
         (center_x, center_y, h, w)
 
     $$hat{center} * center_variance = \frac {center - center_prior} {hw_prior}$$
@@ -38,7 +38,7 @@ def convert_boxes_to_locations(
     center_variance: float,
     size_variance: float,
 ) -> torch.Tensor:
-    """ Convert boxes (x, y, w, h) to regressional location results of SSD
+    """Convert boxes (x, y, w, h) to regressional location results of SSD
 
     $$hat{center} * center_variance = \frac {center - center_prior} {hw_prior}$$
     $$exp(hat{hw} * size_variance) = \frac {hw} {hw_prior}$$
@@ -71,7 +71,7 @@ def corner_bbox_to_center_bbox(corner_bboxes: torch.Tensor) -> torch.Tensor:
 
 
 def area(left_top: torch.Tensor, right_bottom: torch.Tensor):
-    """ Compute area of rectangles given two corners.
+    """Compute area of rectangles given two corners.
 
     :param left_top: (N, 2) left top corner
     :param right_bottom: (N, 2) right bottom corner
@@ -82,7 +82,7 @@ def area(left_top: torch.Tensor, right_bottom: torch.Tensor):
 
 
 def iou(boxes_1: torch.Tensor, boxes_2: torch.Tensor) -> torch.Tensor:
-    """ Return intersection-over-union (Jaccard index) of boxes.
+    """Return intersection-over-union (Jaccard index) of boxes.
 
     :param boxes_1: (N, 4) ground truth boxes
     :param boxes_2: (N or 1, 4) predicted boxes
@@ -105,7 +105,7 @@ def assign_priors(
     corner_form_priors: torch.Tensor,
     iou_threshold: float,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """ Assign ground truth boxes and targets to priors.
+    """Assign ground truth boxes and targets to priors.
 
     :param gt_boxes: (num_targets, 4) ground truth boxes
     :param gt_labels: (num_targets) labels of targets

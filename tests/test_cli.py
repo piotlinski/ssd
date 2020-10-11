@@ -34,7 +34,11 @@ def test_failed_commands_exit_code(
         result = runner.invoke(
             command,
             args,
-            obj={"config": sample_config, "runner": ssd_runner, "dataset": dataset,},
+            obj={
+                "config": sample_config,
+                "runner": ssd_runner,
+                "dataset": dataset,
+            },
         )
 
     assert result.exit_code == 1

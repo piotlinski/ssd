@@ -80,7 +80,10 @@ def test_runner_device_gpu(
 @patch("pyssd.run.EvalDataLoader")
 @patch("pyssd.run.TrainDataLoader", return_value=sample_data_loader())
 def test_runner_train(
-    _train_loader_mock, _test_loader_mock, _checkpointer_mock, sample_config,
+    _train_loader_mock,
+    _test_loader_mock,
+    _checkpointer_mock,
+    sample_config,
 ):
     """Test training SSD model."""
     runner = Runner(sample_config)

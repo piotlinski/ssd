@@ -52,6 +52,6 @@ class MultiScaleMNIST(BaseDataset):
 
     @classmethod
     def download(cls, path: str):
-        """ MultiScaleMNIST must be generated with a tool.
+        """MultiScaleMNIST must be generated with a tool.
         https://github.com/piotlinski/MultiScaleMNIST"""
         raise NotImplementedError

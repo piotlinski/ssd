@@ -36,7 +36,7 @@ class PlateauWarmUpLRScheduler(ReduceLROnPlateau):
 
     @staticmethod
     def linear_warmup_factor(step: int, warmup_steps: int):
-        """ Get linear factor to multiply learning rate during warmup.
+        """Get linear factor to multiply learning rate during warmup.
 
         :param step: current step
         :param warmup_steps: number of steps on which LR will be increased
@@ -45,7 +45,7 @@ class PlateauWarmUpLRScheduler(ReduceLROnPlateau):
         return min(1.0, (step + 1) / warmup_steps)
 
     def dampen(self, step: Optional[int] = None):
-        """ Dampen the learning rates.
+        """Dampen the learning rates.
 
         :param step: current step (optional)
         """
@@ -316,7 +316,7 @@ class Runner:
     def predict(
         self, inputs: torch.Tensor
     ) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
-        """ Perform predictions on given inputs.
+        """Perform predictions on given inputs.
 
         :param inputs: batch of images
         :return: model prediction
