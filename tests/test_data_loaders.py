@@ -3,10 +3,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pyssd.data.loaders import DefaultDataLoader, TestDataLoader, TrainDataLoader
+from pyssd.data.loaders import DefaultDataLoader, EvalDataLoader, TrainDataLoader
 
 
-@pytest.mark.parametrize("loader", [TrainDataLoader, TestDataLoader])
+@pytest.mark.parametrize("loader", [TrainDataLoader, EvalDataLoader])
 @patch.dict("pyssd.data.loaders.datasets", {"test": MagicMock()})
 @patch("pyssd.data.loaders.BatchSampler")
 @patch("pyssd.data.loaders.RandomSampler")

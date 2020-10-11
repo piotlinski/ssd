@@ -49,3 +49,9 @@ class MultiScaleMNIST(BaseDataset):
             torch.from_numpy(boxes[mask]).float(),
             torch.from_numpy(labels[mask] + 1).long(),  # 0 must be background class
         )
+
+    @classmethod
+    def download(cls, path: str):
+        """MultiScaleMNIST must be generated with a tool.
+        https://github.com/piotlinski/MultiScaleMNIST"""
+        raise NotImplementedError
