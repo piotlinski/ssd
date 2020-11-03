@@ -1,4 +1,4 @@
-DOCKER_RUN := docker run --rm -v $(shell pwd):/app -u `id -u`:`id -g`
+DOCKER_RUN := docker run -u `id -u $(USER)`:`id -g $(USER)` --rm -v $(shell pwd):/app
 tag = piotrekzie100/dev:ssd
 
 help: ## Show this help
@@ -7,15 +7,18 @@ help: ## Show this help
 format: ## Run pre-commit hooks to format code
 	 pre-commit run --all-files
 
+build.dev: ## Build docker development image
+	docker build -f dockerfiles/Dockerfile.dev -t $(tag)-dev .
+
+build.prod: ## Build docker production image
+	docker build -f dockerfiles/Dockerfile.prod -t $(tag) .
+
+shell: ## Run docker dev shell
+	$(DOCKER_RUN) -it $(tag)-dev /bin/bash
+
 args ?= -n auto -vvv --cov pyssd
 test: ## Run tests
-	pytest $(args)
-
-shell: ## Run poetry shell
-	poetry shell
-
-build: ## Build docker image
-	poetry build -f wheel && docker build -f Dockerfile -t $(tag) .
+	$(DOCKER_RUN) $(tag)-dev pytest $(args)
 
 gpu ?= 3
 ssd_args ?= ssd --config-file config.yml train
