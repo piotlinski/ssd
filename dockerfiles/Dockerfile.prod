@@ -27,7 +27,7 @@ COPY pyssd ./pyssd
 RUN poetry build -f wheel
 
 # --- PROD IMAGE ---
-FROM piotrekzie100/pytorch:1.7.0-py38-cuda11.0
+FROM piotrekzie100/pytorch:1.7.0-py38-cuda10.2
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y libgl1-mesa-glx ffmpeg libsm6 libxext6
