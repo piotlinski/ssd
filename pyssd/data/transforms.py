@@ -1,5 +1,4 @@
 """Data transforms."""
-from functools import partial
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
@@ -19,13 +18,13 @@ from albumentations import (
 from albumentations.pytorch import ToTensorV2 as ToTensor
 from yacs.config import CfgNode
 
-from ssd.data.bboxes import (
+from pyssd.data.bboxes import (
     assign_priors,
     center_bbox_to_corner_bbox,
     convert_boxes_to_locations,
     corner_bbox_to_center_bbox,
 )
-from ssd.data.priors import process_prior
+from pyssd.data.priors import process_prior
 
 
 class SSDTargetTransform:
@@ -94,9 +93,6 @@ class DataTransform:
             ToTensor(),
         ]
         self.transforms.extend(default_transforms)
-        self.normalize_bboxes = partial(
-            normalize_bboxes, rows=config.DATA.SHAPE[0], cols=config.DATA.SHAPE[1]
-        )
 
     def __call__(
         self,
@@ -113,8 +109,10 @@ class DataTransform:
             )
             augmented = augment(image=image.numpy(), bboxes=bboxes, labels=labels)
             image = augmented["image"]
+            _, height, width = image.shape
             bboxes = torch.tensor(
-                self.normalize_bboxes(augmented["bboxes"]), dtype=torch.float32
+                normalize_bboxes(augmented["bboxes"], rows=height, cols=width),
+                dtype=torch.float32,
             )
             labels = torch.tensor(augmented["labels"])
         else:

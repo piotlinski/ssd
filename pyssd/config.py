@@ -6,9 +6,9 @@ from typing import Optional
 from coolname import generate_slug
 from yacs.config import CfgNode
 
-from ssd.data.datasets import datasets
-from ssd.modeling.backbones import backbones
-from ssd.modeling.box_predictors import box_predictors
+from pyssd.data.datasets import datasets
+from pyssd.modeling.backbones import backbones
+from pyssd.modeling.box_predictors import box_predictors
 
 _C = CfgNode()
 
@@ -77,6 +77,10 @@ _C.RUNNER.TENSORBOARD_DIR = "runs"
 _C.RUNNER.VIS_EPOCHS = 5
 _C.RUNNER.VIS_N_IMAGES = 4
 _C.RUNNER.VIS_CONFIDENCE_THRESHOLDS = (0.0, 0.2, 0.4, 0.6, 0.8)
+_C.RUNNER.CALCULATE_MAP_TRAIN = False
+_C.RUNNER.CALCULATE_MAP_EVAL = True
+_C.RUNNER.MAP_IOU_THRESHOLD = 0.5
+_C.RUNNER.TRACK_MODEL_PARAMS = False
 
 # run name
 _C.EXPERIMENT_NAME = generate_slug(2)

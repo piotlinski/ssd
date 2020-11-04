@@ -7,10 +7,11 @@ import torch.nn as nn
 from torchvision.ops.boxes import batched_nms
 from yacs.config import CfgNode
 
-from ssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
-from ssd.data.priors import process_prior
-from ssd.modeling.backbones import backbones
-from ssd.modeling.box_predictors import box_predictors
+from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
+from pyssd.data.datasets import onehot_labels
+from pyssd.data.priors import process_prior
+from pyssd.modeling.backbones import backbones
+from pyssd.modeling.box_predictors import box_predictors
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +124,10 @@ def process_model_prediction(
         aspect_ratios=config.DATA.PRIOR.ASPECT_RATIOS,
         clip=config.DATA.PRIOR.CLIP,
     ).to(cls_logits.device)
-    scores = nn.functional.softmax(cls_logits, dim=2)
+    if len(cls_logits.shape) == 3:
+        scores = nn.functional.softmax(cls_logits, dim=2)
+    else:
+        scores = onehot_labels(labels=cls_logits, n_classes=config.DATA.N_CLASSES)
     boxes = convert_locations_to_boxes(
         locations=bbox_pred,
         priors=priors,
