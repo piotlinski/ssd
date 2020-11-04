@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyssd"
-version = "1.1.0"
+version = "1.2.0"
 description = "Single Shot Multi-Box Detector implementation in PyTorch"
 authors = ["PiotrJZielinski <piotrekzie100@gmail.com>"]
 packages = [
@@ -10,21 +10,21 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.8"
 yacs = "^0.1.7"
-torch = "^1.5.1"
-torchvision = "^0.7.0"
-albumentations = "^0.4.6"
-numpy = "^1.18.4"
+torch = "^1.7.0"
+torchvision = "^0.8.0"
+albumentations = "^0.5.0"
+numpy = "^1.19.3"
 click = "^7.1.2"
 h5py = "^2.10.0"
-tqdm = "^4.46.0"
-matplotlib = "^3.2.2"
-tensorboard = "^2.2.2"
+tqdm = "^4.51.0"
+matplotlib = "^3.3.2"
+tensorboard = "^2.3.0"
 coolname = "^1.1.0"
-pycocotools = "^2.0.1"
-pillow = "^7.2.0"
+pycocotools = "^2.0.2"
+pillow = "^8.0.1"
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.1.1"
+pytest = "^6.1.2"
 pytest-cov = "^2.10.1"
 pytest-xdist = "^2.1.0"
 
@@ -39,7 +39,7 @@ build-backend = "poetry.masonry.api"
 max-line-length = 88
 extend-ignore = ["E203", "E231"]
 
-[pytest]
+[tool.pytest.ini_options]
 addopts = "--color=yes"
 
 [tool.isort]
