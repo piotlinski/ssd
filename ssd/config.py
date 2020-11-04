@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from coolname import generate_slug
 from yacs.config import CfgNode
 
 from ssd.data.datasets import datasets
@@ -11,21 +12,24 @@ from ssd.modeling.box_predictors import box_predictors
 
 _C = CfgNode()
 
+_C.ASSETS_DIR = "assets"
+
 # data config
 _C.DATA = CfgNode()
 _C.DATA.DATASET = "MultiscaleMNIST"
-_C.DATA.DIR = "data"
-_C.DATA.CHANNELS = 1
+_C.DATA.DATASET_DIR = "data"
 _C.DATA.SHAPE = (300, 300)
 _C.DATA.N_CLASSES = 11
-_C.DATA.PIXEL_MEAN = (0.0,)
-_C.DATA.PIXEL_STD = (1.0,)
+_C.DATA.CLASS_LABELS = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+_C.DATA.PIXEL_MEAN = (0.485, 0.456, 0.406)
+_C.DATA.PIXEL_STD = (0.229, 0.224, 0.225)
+_C.DATA.AUGMENT_COLORS = False
 # data prior config
 _C.DATA.PRIOR = CfgNode()
 _C.DATA.PRIOR.BOXES_PER_LOC = (4, 6, 6, 6, 4, 4)
 _C.DATA.PRIOR.FEATURE_MAPS = (38, 19, 10, 5, 3, 1)
-_C.DATA.PRIOR.MIN_SIZES = (30, 60, 111, 162, 213, 264)
-_C.DATA.PRIOR.MAX_SIZES = (60, 111, 162, 213, 264, 315)
+_C.DATA.PRIOR.MIN_SIZES = (21, 45, 99, 153, 207, 261)
+_C.DATA.PRIOR.MAX_SIZES = (45, 99, 153, 207, 261, 315)
 _C.DATA.PRIOR.STRIDES = (8, 16, 32, 64, 100, 300)
 _C.DATA.PRIOR.ASPECT_RATIOS = (
     (2,),
@@ -39,14 +43,18 @@ _C.DATA.PRIOR.CLIP = True
 
 # model config
 _C.MODEL = CfgNode()
-_C.MODEL.BATCH_NORM = True
+_C.MODEL.BATCH_NORM = False
 # "https://s3.amazonaws.com/amdegroot-models/vgg16_reducedfc.pth"
+_C.MODEL.USE_PRETRAINED = False
 _C.MODEL.PRETRAINED_URL = ""
+_C.MODEL.PRETRAINED_DIR = "pretrained"
+_C.MODEL.CHECKPOINT_DIR = "checkpoints"
+_C.MODEL.CHECKPOINT_NAME = ""
 _C.MODEL.BACKBONE = "VGG300"
 _C.MODEL.BOX_PREDICTOR = "SSD"
 _C.MODEL.CENTER_VARIANCE = 0.1
 _C.MODEL.SIZE_VARIANCE = 0.2
-_C.MODEL.CONFIDENCE_THRESHOLD = 0.01
+_C.MODEL.CONFIDENCE_THRESHOLD = 0.2
 _C.MODEL.NMS_THRESHOLD = 0.45
 _C.MODEL.MAX_PER_IMAGE = 100
 _C.MODEL.IOU_THRESHOLD = 0.5
@@ -58,8 +66,25 @@ _C.RUNNER.DEVICE = "cuda"
 _C.RUNNER.EPOCHS = 100
 _C.RUNNER.BATCH_SIZE = 16
 _C.RUNNER.LR = 1e-3
+_C.RUNNER.LR_REDUCE_PATIENCE = 20
+_C.RUNNER.LR_REDUCE_SKIP_EPOCHS = 100
+_C.RUNNER.LR_WARMUP_STEPS = 1000
 _C.RUNNER.NUM_WORKERS = 8
 _C.RUNNER.PIN_MEMORY = True
+_C.RUNNER.LOG_STEP = 10
+_C.RUNNER.USE_TENSORBOARD = True
+_C.RUNNER.TENSORBOARD_DIR = "runs"
+_C.RUNNER.VIS_EPOCHS = 5
+_C.RUNNER.VIS_N_IMAGES = 4
+_C.RUNNER.VIS_CONFIDENCE_THRESHOLDS = (0.0, 0.2, 0.4, 0.6, 0.8)
+_C.RUNNER.CALCULATE_MAP_TRAIN = False
+_C.RUNNER.CALCULATE_MAP_EVAL = True
+_C.RUNNER.MAP_IOU_THRESHOLD = 0.5
+_C.RUNNER.TRACK_MODEL_PARAMS = False
+
+# run name
+_C.EXPERIMENT_NAME = generate_slug(2)
+_C.CONFIG_STRING = ""
 
 
 logger = logging.getLogger(__name__)
@@ -95,9 +120,13 @@ def get_config(config_file: Optional[str] = None, **kwargs) -> CfgNode:
         config_path = Path(config_file)
         if config_path.exists():
             config.merge_from_file(config_file)
+            config.EXPERIMENT_NAME = config_path.stem
         else:
             logger.warning("File %s does not exist.", config_file)
     config.update(**kwargs)
+    config.CONFIG_STRING = (
+        f"{config.MODEL.BOX_PREDICTOR}-{config.MODEL.BACKBONE}_{config.DATA.DATASET}"
+    )
     config.freeze()
     verify_config(config)
     return config

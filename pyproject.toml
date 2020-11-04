@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ssd"
-version = "0.1.0"
+version = "1.0.0"
 description = "Single Shot Multi-Box Detector implementation in PyTorch"
 authors = ["PiotrJZielinski <piotrekzie100@gmail.com>"]
 packages = [
@@ -17,6 +17,12 @@ numpy = "^1.18.4"
 click = "^7.1.2"
 h5py = "^2.10.0"
 tqdm = "^4.46.0"
+matplotlib = "^3.2.2"
+tensorboard = "^2.2.2"
+coolname = "^1.1.0"
+pycocotools = "^2.0.1"
+pillow = "^7.2.0"
+torchnet = "^0.0.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.1"

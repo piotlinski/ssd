@@ -1,5 +1,4 @@
 """Data transforms."""
-from functools import partial
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
@@ -46,6 +45,7 @@ class SSDTargetTransform:
         self.size_variance = config.MODEL.SIZE_VARIANCE
         self.iou_threshold = config.MODEL.IOU_THRESHOLD
         self.image_shape = config.DATA.SHAPE
+        self.single_class = config.DATA.N_CLASSES == 2
 
     def __call__(
         self,
@@ -69,6 +69,8 @@ class SSDTargetTransform:
             center_variance=self.center_variance,
             size_variance=self.size_variance,
         )
+        if self.single_class:
+            labels[labels > 0] = 1
         return locations, labels
 
 
@@ -83,13 +85,14 @@ class DataTransform:
         self.transforms = transforms
         default_transforms = [
             Resize(*config.DATA.SHAPE),
-            Normalize(mean=config.DATA.PIXEL_MEAN, std=config.DATA.PIXEL_STD,),
+            Normalize(
+                mean=config.DATA.PIXEL_MEAN,
+                std=config.DATA.PIXEL_STD,
+                max_pixel_value=1.0,
+            ),
             ToTensor(),
         ]
         self.transforms.extend(default_transforms)
-        self.normalize_bboxes = partial(
-            normalize_bboxes, rows=config.DATA.SHAPE[0], cols=config.DATA.SHAPE[1]
-        )
 
     def __call__(
         self,
@@ -97,7 +100,6 @@ class DataTransform:
         bboxes: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]:
-        image = image.permute(1, 2, 0)
         if bboxes is not None and labels is not None:
             augment = Compose(
                 self.transforms,
@@ -107,8 +109,10 @@ class DataTransform:
             )
             augmented = augment(image=image.numpy(), bboxes=bboxes, labels=labels)
             image = augmented["image"]
+            _, height, width = image.shape
             bboxes = torch.tensor(
-                self.normalize_bboxes(augmented["bboxes"]), dtype=torch.float32
+                normalize_bboxes(augmented["bboxes"], rows=height, cols=width),
+                dtype=torch.float32,
             )
             labels = torch.tensor(augmented["labels"])
         else:
@@ -122,7 +126,7 @@ class TrainDataTransform(DataTransform):
 
     def __init__(self, config: CfgNode, flip: bool = False):
         transforms = []
-        if config.DATA.CHANNELS == 3:
+        if config.DATA.AUGMENT_COLORS:
             # noinspection PyTypeChecker
             color_transforms = [
                 HueSaturationValue(
