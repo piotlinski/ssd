@@ -1,20 +1,20 @@
 name: CI
-on: [push]
+on: push
 
 jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
         with:
           fetch-depth: 1
       - name: Set up Python 3.8
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: 3.8
 
       - name: Install poetry
-        uses: dschep/install-poetry-action@v1.2
+        uses: dschep/install-poetry-action@v1.3
       - name: Cache poetry virtualenv
         uses: actions/cache@v1
         with:
@@ -40,6 +40,19 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit|${{ env.PY }}|${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Run pre-commit
-        uses: pre-commit/action@v1.1.0
+        uses: pre-commit/action@v2.0.0
         with:
           extra_args: --hook-stage manual --all-files
+
+      - name: Modify package version
+        run:
+          poetry version $(poetry version | cut -f2 -d ' ')+$(git rev-parse --short
+          HEAD)
+        if: github.event_name == 'push' && !contains(github.ref, 'refs/tags/')
+
+      - name: Build and push package to PyPI
+        run: |
+          poetry config repositories.trasee https://pypi.trasee.io/simple/
+          poetry config http-basic.trasee github ${{ secrets.pypi_github }}
+          poetry build -f wheel
+          poetry publish -r trasee
