@@ -2,7 +2,7 @@ import pytest
 import torch
 from yacs.config import CfgNode
 
-from ssd.config import _C as cfg
+from pyssd.config import _C as cfg
 
 
 @pytest.fixture
@@ -11,13 +11,14 @@ def sample_config() -> CfgNode:
     config = cfg.clone()
     config.MODEL.USE_PRETRAINED = False
     config.MODEL.PRETRAINED_URL = ""
+    config.MODEL.CONFIDENCE_THRESHOLD = 0.0
+    config.MODEL.MAX_PER_IMAGE = 10
     config.RUNNER.DEVICE = "cpu"
-    config.DATA.DATASET = "MultiscaleMNIST"
+    config.RUNNER.NUM_WORKERS = 1
     config.RUNNER.EPOCHS = 1
     config.RUNNER.BATCH_SIZE = 2
-    config.MODEL.MAX_PER_IMAGE = 10
     config.RUNNER.USE_TENSORBOARD = False
-    config.MODEL.CONFIDENCE_THRESHOLD = 0.0
+    config.DATA.DATASET = "MultiscaleMNIST"
     return config
 
 

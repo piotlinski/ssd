@@ -7,7 +7,7 @@ import torch
 from matplotlib import patches
 from yacs.config import CfgNode
 
-from ssd.modeling.model import process_model_prediction
+from pyssd.modeling.model import process_model_prediction
 
 
 def plot_image(
@@ -17,7 +17,7 @@ def plot_image(
     ax: Optional[plt.Axes] = None,
     confidence_threshold: Optional[float] = None,
 ) -> plt.Axes:
-    """ Plot an image with predicted bounding boxes.
+    """Plot an image with predicted bounding boxes.
 
     :param config: SSD config
     :param image: Input image
@@ -77,7 +77,7 @@ def plot_images_from_batch(
     gt_labels: torch.Tensor,
     gt_bbox_pred: torch.Tensor,
 ) -> plt.Figure:
-    """ Randomly select images from batch and plot with varying confidence.
+    """Randomly select images from batch and plot with varying confidence.
 
     :param config: SSD config
     :param image_batch: image batch
@@ -106,7 +106,10 @@ def plot_images_from_batch(
         plot_image(
             config,
             image=image,
-            prediction=(gt_labels[example_idx], gt_bbox_pred[example_idx],),
+            prediction=(
+                gt_labels[example_idx],
+                gt_bbox_pred[example_idx],
+            ),
             ax=ax,
         )
         ax.set_title("gt")
@@ -117,7 +120,10 @@ def plot_images_from_batch(
             plot_image(
                 config,
                 image=image,
-                prediction=(pred_cls_logits[example_idx], pred_bbox_pred[example_idx],),
+                prediction=(
+                    pred_cls_logits[example_idx],
+                    pred_bbox_pred[example_idx],
+                ),
                 ax=ax,
                 confidence_threshold=conf,
             )

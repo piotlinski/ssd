@@ -1,4 +1,5 @@
-DOCKER_RUN := docker run -u `id -u $(USER)`:`id -g $(USER)` --rm -v $(shell pwd):/app
+DOCKER_RUN := docker run --rm -v $(shell pwd):/app -u `id -u`:`id -g`
+tag = piotrekzie100/dev:ssd
 
 help: ## Show this help
 	@grep -E '^[.a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -6,7 +7,7 @@ help: ## Show this help
 format: ## Run pre-commit hooks to format code
 	 pre-commit run --all-files
 
-args ?= -vvv --cov ssd
+args ?= -n auto -vvv --cov pyssd
 test: ## Run tests
 	pytest $(args)
 
@@ -14,9 +15,9 @@ shell: ## Run poetry shell
 	poetry shell
 
 build: ## Build docker image
-	bash -c 'read -sp "PyPI trasee_rd password: " && docker build --build-arg PYPI_PASSWORD=$(REPLY) --build-arg UID=`id -u $(USER)` --build-arg GID=`id -g $(USER)` -f Dockerfile -t ssd:latest .'
+	poetry build -f wheel && docker build -f Dockerfile -t $(tag) .
 
 gpu ?= 3
-ssd_args ?= --config-file config.yml train
+ssd_args ?= ssd --config-file config.yml train
 run: ## Run model
-	$(DOCKER_RUN) --gpus '"device=$(gpu)"' --shm-size 24G ssd:latest $(ssd_args)
+	$(DOCKER_RUN) --gpus '"device=$(gpu)"' --shm-size 24G $(tag) $(ssd_args)

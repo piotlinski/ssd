@@ -1,20 +1,10 @@
 """Dataset loaders."""
 from torch.utils.data import BatchSampler, DataLoader, RandomSampler
-from torch.utils.data._utils.collate import default_collate
 from yacs.config import CfgNode
 
-from ssd.data.datasets import datasets
-from ssd.data.datasets.base import DataTransformType
-from ssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
-
-
-def collate(batch):
-    """Collate data for SSD."""
-    images, targets, labels = list(zip(*batch))
-    images = default_collate(images)
-    targets = default_collate(targets)
-    labels = default_collate(labels)
-    return images, targets, labels
+from pyssd.data.datasets import datasets
+from pyssd.data.datasets.base import DataTransformType
+from pyssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
 
 
 class DefaultDataLoader(DataLoader):
@@ -43,7 +33,6 @@ class DefaultDataLoader(DataLoader):
             num_workers=config.RUNNER.NUM_WORKERS,
             batch_sampler=batch_sampler,
             pin_memory=config.RUNNER.PIN_MEMORY,
-            collate_fn=collate,
         )
         self.CLASS_LABELS = (
             dataset.CLASS_LABELS
@@ -65,8 +54,8 @@ class TrainDataLoader(DefaultDataLoader):
         )
 
 
-class TestDataLoader(DefaultDataLoader):
-    """Test dataset loader."""
+class EvalDataLoader(DefaultDataLoader):
+    """Eval dataset loader."""
 
     def __init__(self, config: CfgNode):
         data_transform = DataTransform(config)

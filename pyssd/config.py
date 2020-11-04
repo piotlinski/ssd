@@ -6,9 +6,9 @@ from typing import Optional
 from coolname import generate_slug
 from yacs.config import CfgNode
 
-from ssd.data.datasets import datasets
-from ssd.modeling.backbones import backbones
-from ssd.modeling.box_predictors import box_predictors
+from pyssd.data.datasets import datasets
+from pyssd.modeling.backbones import backbones
+from pyssd.modeling.box_predictors import box_predictors
 
 _C = CfgNode()
 
@@ -50,7 +50,7 @@ _C.MODEL.PRETRAINED_URL = ""
 _C.MODEL.PRETRAINED_DIR = "pretrained"
 _C.MODEL.CHECKPOINT_DIR = "checkpoints"
 _C.MODEL.CHECKPOINT_NAME = ""
-_C.MODEL.BACKBONE = "VGG300"
+_C.MODEL.BACKBONE = "VGG16"
 _C.MODEL.BOX_PREDICTOR = "SSD"
 _C.MODEL.CENTER_VARIANCE = 0.1
 _C.MODEL.SIZE_VARIANCE = 0.2
@@ -77,9 +77,6 @@ _C.RUNNER.TENSORBOARD_DIR = "runs"
 _C.RUNNER.VIS_EPOCHS = 5
 _C.RUNNER.VIS_N_IMAGES = 4
 _C.RUNNER.VIS_CONFIDENCE_THRESHOLDS = (0.0, 0.2, 0.4, 0.6, 0.8)
-_C.RUNNER.CALCULATE_MAP_TRAIN = False
-_C.RUNNER.CALCULATE_MAP_EVAL = True
-_C.RUNNER.MAP_IOU_THRESHOLD = 0.5
 _C.RUNNER.TRACK_MODEL_PARAMS = False
 
 # run name

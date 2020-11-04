@@ -11,7 +11,7 @@ import PIL
 import torch
 from pycocotools.coco import COCO
 
-from ssd.data.datasets.base import BaseDataset, DataTransformType, TargetTransformType
+from pyssd.data.datasets.base import BaseDataset, DataTransformType, TargetTransformType
 
 
 class COCODetection(BaseDataset):
@@ -23,8 +23,14 @@ class COCODetection(BaseDataset):
         ("/", "http://images.cocodataset.org/annotations/annotations_trainval2017.zip"),
     }
     datasets = {
-        "train": ("images/train2017", "annotations/instances_train2017.json",),
-        "test": ("images/val2017", "annotations/instances_val2017.json",),
+        "train": (
+            "images/train2017",
+            "annotations/instances_train2017.json",
+        ),
+        "test": (
+            "images/val2017",
+            "annotations/instances_val2017.json",
+        ),
     }
     CLASS_LABELS = [
         "person",

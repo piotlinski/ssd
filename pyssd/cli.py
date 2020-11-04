@@ -4,9 +4,9 @@ from typing import Optional
 
 import click as click
 
-from ssd.config import get_config
-from ssd.data.datasets import datasets
-from ssd.run import Runner
+from pyssd.config import get_config
+from pyssd.data.datasets import datasets
+from pyssd.run import Runner
 
 logger = logging.getLogger(__name__)
 
