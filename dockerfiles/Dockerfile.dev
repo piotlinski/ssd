@@ -18,7 +18,7 @@ ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 RUN apt-get update \
     && apt-get install --no-install-recommends -y curl build-essential cmake
 
-RUN curl -sSL https://raw.githubusercontent.com/make make masdispater/poetry/master/get-poetry.py | python
+RUN curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
 
 WORKDIR $PYSETUP_PATH
 COPY poetry.lock pyproject.toml ./
