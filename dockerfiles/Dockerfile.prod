@@ -39,7 +39,8 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DEFAULT_TIMEOUT=100 \
     PYSETUP_PATH="/opt/pysetup" \
     VENV_PATH="/opt/pysetup/.venv" \
-    MPLCONFIGDIR="/tmp/mpl"
+    MPLCONFIGDIR="/tmp/mpl" \
+    TORCH_HOME="/app/assets/pretrained"
 
 COPY --from=builder $PYSETUP_PATH/dist/*.whl /tmp/dist/
 RUN pip install /tmp/dist/*.whl
