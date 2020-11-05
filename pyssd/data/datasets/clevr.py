@@ -147,7 +147,7 @@ class CLEVR(BaseDataset):
 
     def _get_annotation(self, item: int) -> Tuple[torch.Tensor, torch.Tensor]:
         image_file = self.image_names[item]
-        ann = self.annotations(image_file)
+        ann = self.annotations[image_file]
         boxes = torch.tensor(
             list(zip(ann["x_min"], ann["y_min"], ann["x_max"], ann["y_max"])),
             dtype=torch.float32,
