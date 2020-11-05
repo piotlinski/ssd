@@ -18,7 +18,7 @@ shell: ## Run docker dev shell
 
 args ?= -n auto -vvv --cov pyssd
 test: ## Run tests
-	$(DOCKER_RUN) $(tag)-dev pytest $(args)
+	poetry run pytest $(args)
 
 gpu ?= 3
 ssd_args ?= ssd --config-file config.yml train
