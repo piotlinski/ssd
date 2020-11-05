@@ -2,8 +2,9 @@
 import json
 import subprocess
 import zipfile
+from collections import defaultdict
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import PIL
@@ -15,111 +16,19 @@ from pyssd.data.datasets.base import BaseDataset, DataTransformType, TargetTrans
 class CLEVR(BaseDataset):
     """CLEVR dataset."""
 
+    sizes = ["large", "small"]
+    colors = ["gray", "red", "blue", "green", "brown", "purple", "cyan", "yellow"]
+    materials = ["rubber", "metal"]
+    shapes = ["cube", "sphere", "cylinder"]
+
     CLEVR_URL = "https://dl.fbaipublicfiles.com/clevr/CLEVR_v1.0.zip"
 
     datasets = {
-        "train": ("images/train", "bboxes/train.json"),
-        "test": ("images/val", "bboxes/val.json"),
+        "train": ("images/train", "scenes/CLEVR_train_scenes.json"),
+        "test": ("images/val", "scenes/CLEVR_val_scenes.json"),
     }
 
-    CLASS_LABELS = [
-        "large gray rubber cube",
-        "large gray rubber sphere",
-        "large gray rubber cylinder",
-        "large gray metal cube",
-        "large gray metal sphere",
-        "large gray metal cylinder",
-        "large red rubber cube",
-        "large red rubber sphere",
-        "large red rubber cylinder",
-        "large red metal cube",
-        "large red metal sphere",
-        "large red metal cylinder",
-        "large blue rubber cube",
-        "large blue rubber sphere",
-        "large blue rubber cylinder",
-        "large blue metal cube",
-        "large blue metal sphere",
-        "large blue metal cylinder",
-        "large green rubber cube",
-        "large green rubber sphere",
-        "large green rubber cylinder",
-        "large green metal cube",
-        "large green metal sphere",
-        "large green metal cylinder",
-        "large brown rubber cube",
-        "large brown rubber sphere",
-        "large brown rubber cylinder",
-        "large brown metal cube",
-        "large brown metal sphere",
-        "large brown metal cylinder",
-        "large purple rubber cube",
-        "large purple rubber sphere",
-        "large purple rubber cylinder",
-        "large purple metal cube",
-        "large purple metal sphere",
-        "large purple metal cylinder",
-        "large cyan rubber cube",
-        "large cyan rubber sphere",
-        "large cyan rubber cylinder",
-        "large cyan metal cube",
-        "large cyan metal sphere",
-        "large cyan metal cylinder",
-        "large yellow rubber cube",
-        "large yellow rubber sphere",
-        "large yellow rubber cylinder",
-        "large yellow metal cube",
-        "large yellow metal sphere",
-        "large yellow metal cylinder",
-        "small gray rubber cube",
-        "small gray rubber sphere",
-        "small gray rubber cylinder",
-        "small gray metal cube",
-        "small gray metal sphere",
-        "small gray metal cylinder",
-        "small red rubber cube",
-        "small red rubber sphere",
-        "small red rubber cylinder",
-        "small red metal cube",
-        "small red metal sphere",
-        "small red metal cylinder",
-        "small blue rubber cube",
-        "small blue rubber sphere",
-        "small blue rubber cylinder",
-        "small blue metal cube",
-        "small blue metal sphere",
-        "small blue metal cylinder",
-        "small green rubber cube",
-        "small green rubber sphere",
-        "small green rubber cylinder",
-        "small green metal cube",
-        "small green metal sphere",
-        "small green metal cylinder",
-        "small brown rubber cube",
-        "small brown rubber sphere",
-        "small brown rubber cylinder",
-        "small brown metal cube",
-        "small brown metal sphere",
-        "small brown metal cylinder",
-        "small purple rubber cube",
-        "small purple rubber sphere",
-        "small purple rubber cylinder",
-        "small purple metal cube",
-        "small purple metal sphere",
-        "small purple metal cylinder",
-        "small cyan rubber cube",
-        "small cyan rubber sphere",
-        "small cyan rubber cylinder",
-        "small cyan metal cube",
-        "small cyan metal sphere",
-        "small cyan metal cylinder",
-        "small yellow rubber cube",
-        "small yellow rubber sphere",
-        "small yellow rubber cylinder",
-        "small yellow metal cube",
-        "small yellow metal sphere",
-        "small yellow metal cylinder",
-    ]
+    CLASS_LABELS: List[str] = []
     OBJECT_LABEL = "object"
 
     def __init__(
@@ -130,10 +39,18 @@ class CLEVR(BaseDataset):
         subset: str = "train",
     ):
         super().__init__(data_dir, data_transform, target_transform, subset)
+        if not self.CLASS_LABELS:
+            self.CLASS_LABELS = [
+                f"{size} {color} {material} {shape}"
+                for size in self.sizes
+                for color in self.colors
+                for material in self.materials
+                for shape in self.shapes
+            ]
         self.image_dir, annotations_file = self.datasets[subset]
         with self.data_dir.joinpath(annotations_file).open("r") as fp:
-            self.annotations = json.load(fp)
-        self.image_names = list(self.annotations.keys())
+            self.annotations = json.load(fp)["scenes"]
+        self.image_names = [ann["image_filename"] for ann in self.annotations]
 
     def __len__(self):
         """Get dataset length."""
@@ -145,9 +62,60 @@ class CLEVR(BaseDataset):
         image = np.array(PIL.Image.open(image_path).convert("RGB")) / 255
         return torch.tensor(image)
 
+    def extract_bbox_and_label(
+        self, scene: Dict[str, Any]
+    ) -> Dict[str, List[Union[int, float]]]:
+        """Create bbox and label from scene annotation.
+
+        :param scene: scene annotation dict according to CLEVR format
+        :return: Dict with list of bbox params: x_min, y_min, x_max, y_max, class
+        """
+        annotation: Dict[str, List[Union[int, float]]] = defaultdict(list)
+        objs = scene["objects"]
+        rotation = scene["directions"]["right"]
+
+        for obj in objs:
+            x, y, _ = obj["pixel_coords"]
+            x1, y1, z1 = obj["3d_coords"]
+
+            cos_theta, sin_theta, _ = rotation
+
+            x1 = x1 * cos_theta + y1 * sin_theta
+            y1 = x1 * -sin_theta + y1 * cos_theta
+
+            height_d = height_u = width_l = width_r = 6.9 * z1 * (15 - y1) / 2.0
+
+            if obj["shape"] == "cylinder":
+                d = 9.4 + y1
+                h = 6.4
+                s = z1
+
+                height_u *= (s * (h / d + 1)) / ((s * (h / d + 1)) - (s * (h - s) / d))
+                height_d = height_u * (h - s + d) / (h + s + d)
+
+                width_l *= 11 / (10 + y1)
+                width_r = width_l
+
+            elif obj["shape"] == "cube":
+                height_u *= 1.3 * 10 / (10 + y1)
+                height_d = height_u
+                width_l = height_u
+                width_r = height_u
+
+            class_name = (
+                f"{obj['size']} {obj['color']} {obj['material']} {obj['shape']}"
+            )
+            annotation["class"].append(self.CLASS_LABELS.index(class_name) + 1)
+            annotation["x_min"].append(max(0, x - width_l))
+            annotation["y_min"].append(max(0, y - height_d))
+            annotation["x_max"].append(min(480, x + width_r))
+            annotation["y_max"].append(min(320, y + height_u))
+
+        return annotation
+
     def _get_annotation(self, item: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        image_file = self.image_names[item]
-        ann = self.annotations[image_file]
+        scene = self.annotations[item]
+        ann = self.extract_bbox_and_label(scene)
         boxes = torch.tensor(
             list(zip(ann["x_min"], ann["y_min"], ann["x_max"], ann["y_max"])),
             dtype=torch.float32,
