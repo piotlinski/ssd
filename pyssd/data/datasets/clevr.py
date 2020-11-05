@@ -67,6 +67,9 @@ class CLEVR(BaseDataset):
     ) -> Dict[str, List[Union[int, float]]]:
         """Create bbox and label from scene annotation.
 
+        .. note: sourced from
+           https://github.com/larchen/clevr-vqa/blob/master/bounding_box.py
+
         :param scene: scene annotation dict according to CLEVR format
         :return: Dict with list of bbox params: x_min, y_min, x_max, y_max, class
         """
