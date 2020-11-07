@@ -13,13 +13,13 @@ class MobileNetV2(BaseBackbone):
     """MobileNetV2 backbone for SSD."""
 
     def __init__(self, use_pretrained: bool):
+        self.out_channels = [1280, 640, 640, 320, 320]
+        self.feature_maps = [1, 3, 5, 11, 23]
+        self.min_sizes = [251, 187, 123, 59, 21]
+        self.max_sizes = [315, 251, 187, 123, 59]
+        self.strides = [300, 100, 64, 32, 16]
+        self.aspect_ratios = [(), (), (), (), ()]
         super().__init__(
-            out_channels=[1280, 640, 640, 320, 320],
-            feature_maps=[1, 3, 5, 11, 23],
-            min_sizes=[251, 187, 123, 59, 21],
-            max_sizes=[315, 251, 187, 123, 59],
-            strides=[300, 100, 64, 32, 16],
-            aspect_ratios=[(), (), (), (), ()],
             use_pretrained=use_pretrained,
         )
 

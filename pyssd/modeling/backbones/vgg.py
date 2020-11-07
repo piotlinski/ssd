@@ -38,13 +38,13 @@ class VGGLite(BaseBackbone):
     """VGG11 light backbone."""
 
     def __init__(self, use_pretrained: bool):
+        self.out_channels = [512, 512, 512, 256, 256]
+        self.feature_maps = [18, 9, 5, 3, 1]
+        self.min_sizes = [32, 80, 153, 207, 261]
+        self.max_sizes = [80, 153, 207, 261, 315]
+        self.strides = [16, 32, 64, 100, 300]
+        self.aspect_ratios = [(), (), (), (), ()]
         super().__init__(
-            out_channels=[512, 512, 512, 256, 256],
-            feature_maps=[18, 9, 5, 3, 1],
-            min_sizes=[32, 80, 153, 207, 261],
-            max_sizes=[80, 153, 207, 261, 315],
-            strides=[16, 32, 64, 100, 300],
-            aspect_ratios=[(), (), (), (), ()],
             use_pretrained=use_pretrained,
         )
 
@@ -116,13 +116,13 @@ class VGG16(BaseBackbone, ABC):
         batch_norm: bool,
     ):
         self.batch_norm = batch_norm
+        self.out_channels = out_channels
+        self.feature_maps = feature_maps
+        self.min_sizes = min_sizes
+        self.max_sizes = max_sizes
+        self.strides = strides
+        self.aspect_ratios = aspect_ratios
         super().__init__(
-            out_channels=out_channels,
-            feature_maps=feature_maps,
-            min_sizes=min_sizes,
-            max_sizes=max_sizes,
-            strides=strides,
-            aspect_ratios=aspect_ratios,
             use_pretrained=use_pretrained,
         )
         self.l2_norm = L2Norm(n_channels=512, scale=20)

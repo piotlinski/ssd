@@ -1,7 +1,6 @@
 from typing import Dict, Type
 
-import torch.nn as nn
-
+from pyssd.modeling.backbones.base import BaseBackbone
 from pyssd.modeling.backbones.mobilenetv2 import MobileNetV2
 from pyssd.modeling.backbones.vgg import (
     VGG300,
@@ -12,7 +11,7 @@ from pyssd.modeling.backbones.vgg import (
     VGGLiteBN,
 )
 
-backbones: Dict[str, Type[nn.Module]] = {
+backbones: Dict[str, Type[BaseBackbone]] = {
     "VGGLite": VGGLite,
     "VGGLiteBN": VGGLiteBN,
     "VGG300": VGG300,

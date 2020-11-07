@@ -1,46 +1,35 @@
 """Base class for SSD backbone."""
+from abc import ABC
 from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 
 
-class BaseBackbone(nn.Module):
-    def __init__(
-        self,
-        out_channels: List[int],
-        feature_maps: List[int],
-        min_sizes: List[float],
-        max_sizes: List[float],
-        strides: List[int],
-        aspect_ratios: List[Tuple[int, ...]],
-        use_pretrained: bool,
-    ):
+class BaseBackbone(nn.Module, ABC):
+    def __init__(self, use_pretrained: bool):
         """
-        :param out_channels: backbone output channels
-        :param feature_maps: number of features in each output map
-        :param min_sizes: minimum object size in each feature map
-        :param max_sizes: maximum object size in each feature map
-        :param strides: stride in each feature map
-        :param aspect_ratios: additional rectangular boxes in each feature map
         :param use_pretrained: use pretrained backbone
         """
         super().__init__()
 
-        self.out_channels = out_channels
-        self.feature_maps = feature_maps
-        self.min_sizes = min_sizes
-        self.max_sizes = max_sizes
-        self.strides = strides
-        self.aspect_ratios = aspect_ratios
-        self.boxes_per_loc = [
-            2 + 2 * len(aspect_ratio_tuple) for aspect_ratio_tuple in self.aspect_ratios
-        ]
+        self.out_channels: List[int]
+        self.feature_maps: List[int]
+        self.min_sizes: List[float]
+        self.max_sizes: List[float]
+        self.strides: List[int]
+        self.aspect_ratios: List[Tuple[int, ...]]
         self.use_pretrained = use_pretrained
 
         self.backbone = self._build_backbone()
         self.extras = self._build_extras()
         self.init_extras()
+
+    @property
+    def boxes_per_loc(self) -> List[int]:
+        return [
+            2 + 2 * len(aspect_ratio_tuple) for aspect_ratio_tuple in self.aspect_ratios
+        ]
 
     def init_extras(self):
         """Initialize model params."""
