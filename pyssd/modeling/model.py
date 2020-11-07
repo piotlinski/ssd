@@ -7,12 +7,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
 
 from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
-from pyssd.data.datasets import onehot_labels
+from pyssd.data.datasets import datasets, onehot_labels
 from pyssd.data.priors import process_prior
-from pyssd.data.transforms import SSDTargetTransform
+from pyssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
 from pyssd.loss import MultiBoxLoss
 from pyssd.modeling.backbones import backbones
 from pyssd.modeling.box_predictors import box_predictors
@@ -25,14 +26,19 @@ class SSD(pl.LightningModule):
 
     def __init__(
         self,
-        n_classes: int,
-        class_labels: List[str],
-        object_label: str,
+        dataset_name: str,
+        data_dir: str,
         lr: float = 1e-3,
+        batch_size: int = 32,
+        num_workers: int = 8,
+        pin_memory: bool = True,
+        n_classes: Optional[int] = None,
         backbone_name: str = "VGG300",
         use_pretrained_backbone: bool = False,
         predictor_name: str = "SSD",
         image_size: Tuple[int, int] = (300, 300),
+        pixel_mean: Tuple[float, ...] = (0.0, 0.0, 0.0),
+        pixel_std: Tuple[float, ...] = (0.0, 0.0, 0.0),
         center_variance: float = 0.1,
         size_variance: float = 0.2,
         iou_threshold: float = 0.5,
@@ -40,16 +46,24 @@ class SSD(pl.LightningModule):
         nms_threshold: float = 0.45,
         max_per_image: int = 100,
         negative_positive_ratio: float = 3,
+        flip_train: bool = False,
+        augment_colors_train: bool = False,
     ):
         """
-        :param n_classes: number of classes (if 2 then no classification)
-        :param class_labels: dataset class labels
-        :param object_label: dataset object label
+        :param dataset_name: used dataset name
+        :param data_dir: dataset data directory path
         :param lr: learning rate
+        :param batch_size: mini-batch size for training
+        :param num_workers: number of workers for dataloader
+        :param pin_memory: pin memory for training
+        :param n_classes: number of classes (if 2 then no classification),
+            defaults to number of classes in the dataset
         :param backbone_name: used backbone name
         :param use_pretrained_backbone: download pretrained weights for backbone
         :param predictor_name: used predictor name
         :param image_size: image size tuple
+        :param pixel_mean: data pixel mean per channel
+        :param pixel_std: data pixel std per channel
         :param center_variance: SSD center variance
         :param size_variance: SSD size variance
         :param iou_threshold: IOU threshold for anchors
@@ -58,8 +72,14 @@ class SSD(pl.LightningModule):
         :param max_per_image: max number of detections per image
         :param negative_positive_ratio: the ratio between the negative examples and
             positive examples for calculating loss
+        :param flip_train: perform random flipping on train images
+        :param augment_colors_train: perform random colors augmentation on train images
         """
         super().__init__()
+        self.dataset = datasets[dataset_name]
+        self.data_dir = data_dir
+        if n_classes is None:
+            n_classes = len(self.dataset.CLASS_LABELS) + 1
         backbone = backbones[backbone_name]
         self.backbone = backbone(use_pretrained=use_pretrained_backbone)
         predictor = box_predictors[predictor_name]
@@ -88,16 +108,24 @@ class SSD(pl.LightningModule):
             iou_threshold=iou_threshold,
         )
         self.image_size = image_size
-        self.n_classes = n_classes
+        self.pixel_mean = pixel_mean
+        self.pixel_std = pixel_std
         self.center_variance = center_variance
         self.size_variance = size_variance
         self.confidence_threshold = confidence_threshold
         self.nms_threshold = nms_threshold
         self.max_per_image = max_per_image
-        self.class_labels = class_labels if n_classes != 2 else [object_label]
+        self.class_labels = (
+            self.dataset.CLASS_LABELS if n_classes != 2 else [self.dataset.OBJECT_LABEL]
+        )
+        self.flip_train = flip_train
+        self.augment_colors_train = augment_colors_train
 
         self.criterion = MultiBoxLoss(negative_positive_ratio)
         self.lr = lr
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.pin_memory = pin_memory
 
     def process_model_output(
         self, detections: Tuple[torch.Tensor, torch.Tensor], confidence_threshold: float
@@ -266,3 +294,45 @@ class SSD(pl.LightningModule):
             "lr_scheduler": lr_scheduler,
             "monitor": "val_loss",
         }
+
+    def train_dataloader(self) -> DataLoader:
+        """Prepare train dataloader."""
+        data_transform = TrainDataTransform(
+            image_size=self.image_size,
+            pixel_mean=self.pixel_mean,
+            pixel_std=self.pixel_std,
+            flip=self.flip_train,
+            augment_colors=self.augment_colors_train,
+        )
+        dataset = self.dataset(
+            self.data_dir,
+            data_transform=data_transform,
+            target_transform=self.target_transform,
+            subset="train",
+        )
+        return DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+        )
+
+    def val_dataloader(self) -> DataLoader:
+        """Prepare validation dataloader."""
+        data_transform = DataTransform(
+            image_size=self.image_size,
+            pixel_mean=self.pixel_mean,
+            pixel_std=self.pixel_std,
+        )
+        dataset = self.dataset(
+            self.data_dir,
+            data_transform=data_transform,
+            target_transform=self.target_transform,
+            subset="test",
+        )
+        return DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+        )

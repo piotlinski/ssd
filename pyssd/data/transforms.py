@@ -141,7 +141,7 @@ class TrainDataTransform(DataTransform):
         augment_colors: bool = False,
     ):
         """
-        :param data_shape: model input data shape (eg. (300, 300))
+        :param image_size: model input data shape (eg. (300, 300))
         :param pixel_mean: data pixel mean per channel
         :param pixel_std: data pixel std per channel
         :param flip: randomly flip image L/R
