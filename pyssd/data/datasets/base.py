@@ -1,4 +1,5 @@
 """Base class for dataset."""
+from abc import ABC
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
@@ -16,7 +17,7 @@ TargetTransformType = Optional[
 ]
 
 
-class BaseDataset(data.Dataset):
+class BaseDataset(data.Dataset, ABC):
 
     CLASS_LABELS: List[str] = []
     OBJECT_LABEL = ""
