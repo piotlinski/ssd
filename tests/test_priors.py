@@ -15,19 +15,13 @@ from pyssd.data.priors import (
 @pytest.fixture
 def prior_data():
     """Prepare sample prior data."""
-    image_size = (300, 300)
-    feature_maps = (4, 2)
-    min_sizes = (2, 1)
-    max_sizes = (3, 2)
-    strides = (2, 1)
-    aspect_ratios = ((2, 3), (2,))
     return {
-        "image_size": image_size,
-        "feature_maps": feature_maps,
-        "min_sizes": min_sizes,
-        "max_sizes": max_sizes,
-        "strides": strides,
-        "aspect_ratios": aspect_ratios,
+        "image_size": (300, 300),
+        "feature_maps": (4, 2),
+        "min_sizes": (2, 1),
+        "max_sizes": (3, 2),
+        "strides": (2, 1),
+        "aspect_ratios": ((2, 3), (2,)),
     }
 
 
@@ -114,13 +108,11 @@ def test_all_prior_boxes(prior_data):
     assert len(all_boxes) == 112
 
 
-@pytest.mark.parametrize("clip", [False, True])
-def test_prior_processing(clip, prior_data):
+def test_prior_processing(prior_data):
     """Test generating prior tensor."""
-    prior = process_prior(**prior_data, clip=clip)
-    if clip:
-        assert (0 <= prior).all()
-        assert (prior <= 1).all()
+    prior = process_prior(**prior_data)
+    assert (0 <= prior).all()
+    assert (prior <= 1).all()
     assert prior.shape[0] == 112
     assert prior.shape[1] == 4
     assert len(prior.shape) == 2
