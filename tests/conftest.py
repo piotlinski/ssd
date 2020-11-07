@@ -9,15 +9,6 @@ def sample_image():
 
 
 @pytest.fixture
-def sample_prediction():
-    """Sample cls_logits and bbox_pred for given config."""
-    dim = sum(
-        [features ** 2 * boxes for features, boxes in zip([32, 16, 8], [4, 6, 4])]
-    )
-    return torch.zeros((1, dim, 10)), torch.zeros((1, dim, 4))
-
-
-@pytest.fixture
 def ssd_params():
     """Create kwargs for SSD."""
     return {

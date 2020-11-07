@@ -1,15 +1,16 @@
 """SSD model."""
 import logging
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as functional
 from torchvision.ops.boxes import batched_nms
-from yacs.config import CfgNode
 
 from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
 from pyssd.data.datasets import onehot_labels
 from pyssd.data.priors import process_prior
+from pyssd.data.transforms import SSDTargetTransform
 from pyssd.modeling.backbones import backbones
 from pyssd.modeling.box_predictors import box_predictors
 
@@ -19,133 +20,176 @@ logger = logging.getLogger(__name__)
 class SSD(nn.Module):
     """SSD Detector class."""
 
-    def __init__(self, config: CfgNode):
+    def __init__(
+        self,
+        backbone_name: str,
+        use_pretrained_backbone: bool,
+        predictor_name: str,
+        image_size: Tuple[int, int],
+        n_classes: int,
+        center_variance: float,
+        size_variance: float,
+        iou_threshold: float,
+        confidence_threshold: float,
+        nms_threshold: float,
+        max_per_image: int,
+        class_labels: List[str],
+        object_label: str,
+    ):
+        """
+        :param backbone_name: used backbone name
+        :param use_pretrained_backbone: download pretrained weights for backbone
+        :param predictor_name: used predictor name
+        :param image_size: image size tuple
+        :param n_classes: number of classes (if 2 then no classification)
+        :param center_variance: SSD center variance
+        :param size_variance: SSD size variance
+        :param iou_threshold: IOU threshold for anchors
+        :param confidence_threshold: min prediction confidence to use as detection
+        :param nms_threshold: non-max suppression IOU threshold
+        :param max_per_image: max number of detections per image
+        :param class_labels: dataset class labels
+        :param object_label: dataset object label
+        """
         super().__init__()
-        backbone = backbones[config.MODEL.BACKBONE]
-        self.backbone = backbone(config)
-        predictor = box_predictors[config.MODEL.BOX_PREDICTOR]
+        backbone = backbones[backbone_name]
+        self.backbone = backbone(use_pretrained=use_pretrained_backbone)
+        predictor = box_predictors[predictor_name]
         self.predictor = predictor(
-            config,
+            n_classes=n_classes,
             backbone_out_channels=self.backbone.out_channels,
+            backbone_boxes_per_loc=self.backbone.boxes_per_loc,
         )
+        self.anchors = nn.Parameter(
+            process_prior(
+                image_size=image_size,
+                feature_maps=self.backbone.feature_maps,
+                min_sizes=self.backbone.min_sizes,
+                max_sizes=self.backbone.max_sizes,
+                strides=self.backbone.strides,
+                aspect_ratios=self.backbone.aspect_ratios,
+            ),
+            requires_grad=False,
+        )
+        self.target_transform = SSDTargetTransform(
+            anchors=self.anchors,
+            image_size=image_size,
+            n_classes=n_classes,
+            center_variance=center_variance,
+            size_variance=size_variance,
+            iou_threshold=iou_threshold,
+        )
+        self.image_size = image_size
+        self.n_classes = n_classes
+        self.center_variance = center_variance
+        self.size_variance = size_variance
+        self.confidence_threshold = confidence_threshold
+        self.nms_threshold = nms_threshold
+        self.max_per_image = max_per_image
+        self.class_labels = class_labels if n_classes != 2 else [object_label]
 
     def forward(self, images):
         features = self.backbone(images)
         predictions = self.predictor(features)
         return predictions
 
+    def process_model_output(
+        self, detections: Tuple[torch.Tensor, torch.Tensor], confidence_threshold: float
+    ) -> Iterable[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+        """Process model output with non-max suppression.
 
-def process_model_output(
-    detections: Tuple[torch.Tensor, torch.Tensor],
-    image_size: Tuple[int, int],
-    confidence_threshold: float,
-    nms_threshold: float,
-    max_per_image: int,
-) -> Iterable[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
-    """Process model output with non-max suppression.
+        :param detections: tuple of class logits and bounding box regressions
+        :param confidence_threshold: min detection confidence threshold
+        :return: iterable of tuples containing bounding boxes, scores and labels
+        """
+        width, height = self.image_size
+        scores_batches, boxes_batches = detections
+        batch_size = scores_batches.size(0)
+        device = scores_batches.device
+        for batch_idx in range(batch_size):
+            scores = scores_batches[batch_idx]  # (N, num_classes)
+            boxes = boxes_batches[batch_idx]  # (N, 4)
+            n_boxes, n_classes = scores.shape
 
-    :param detections: tuple of class logits and bounding box regressions
-    :param image_size: input image shape tuple
-    :param confidence_threshold: min confidence to use prediction
-    :param nms_threshold: non-maximum suppresion threshold
-    :param max_per_image: max number of detections per image
-    :return: iterable of tuples containing bounding boxes, scores and labels
-    """
-    width, height = image_size
-    scores_batches, boxes_batches = detections
-    batch_size = scores_batches.size(0)
-    device = scores_batches.device
-    for batch_idx in range(batch_size):
-        scores = scores_batches[batch_idx]  # (N, num_classes)
-        boxes = boxes_batches[batch_idx]  # (N, 4)
-        n_boxes, n_classes = scores.shape
+            boxes = boxes.view(n_boxes, 1, 4).expand(n_boxes, n_classes, 4)
+            labels = torch.arange(n_classes, device=device)
+            labels = labels.view(1, n_classes).expand_as(scores)
 
-        boxes = boxes.view(n_boxes, 1, 4).expand(n_boxes, n_classes, 4)
-        labels = torch.arange(n_classes, device=device)
-        labels = labels.view(1, n_classes).expand_as(scores)
+            # remove predictions with label == background
+            boxes = boxes[:, 1:]
+            scores = scores[:, 1:]
+            labels = labels[:, 1:]
 
-        # remove predictions with label == background
-        boxes = boxes[:, 1:]
-        scores = scores[:, 1:]
-        labels = labels[:, 1:]
+            # batch everything, by making every class prediction a separate instance
+            boxes = boxes.reshape(-1, 4)
+            scores = scores.reshape(-1)
+            labels = labels.reshape(-1)
 
-        # batch everything, by making every class prediction a separate instance
-        boxes = boxes.reshape(-1, 4)
-        scores = scores.reshape(-1)
-        labels = labels.reshape(-1)
+            # remove low scoring boxes
+            approved_mask = (
+                (scores > confidence_threshold).nonzero(as_tuple=False).squeeze(1)
+            )
+            boxes = boxes[approved_mask]
+            scores = scores[approved_mask]
+            labels = labels[approved_mask]
 
-        # remove low scoring boxes
-        approved_mask = (
-            (scores > confidence_threshold).nonzero(as_tuple=False).squeeze(1)
+            # reshape boxes to image size
+            boxes[:, 0::2] *= width
+            boxes[:, 1::2] *= height
+
+            # as of torchvision 0.6.0, cuda nms is broken (int overflow)
+            try:
+                keep_mask = batched_nms(
+                    boxes=boxes,
+                    scores=scores,
+                    idxs=labels,
+                    iou_threshold=self.nms_threshold,
+                )
+            except RuntimeError:
+                logger.warning(
+                    "Torchvision NMS CUDA int overflow. Falling back to CPU."
+                )
+                keep_mask = batched_nms(
+                    boxes=boxes.cpu(),
+                    scores=scores.cpu(),
+                    idxs=labels.cpu(),
+                    iou_threshold=self.nms_threshold,
+                )
+            # keep only top scoring predictions
+            keep_mask = keep_mask[: self.max_per_image]
+            boxes = boxes[keep_mask]
+            scores = scores[keep_mask]
+            labels = labels[keep_mask]
+
+            yield boxes, scores, labels
+
+    def process_model_prediction(
+        self,
+        cls_logits: torch.Tensor,
+        bbox_pred: torch.Tensor,
+        confidence_threshold: Optional[float] = None,
+    ) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+        """Get readable results from model predictions.
+
+        :param cls_logits: class predictions from model
+        :param bbox_pred: bounding box predictions from model
+        :param confidence_threshold: optional param to override default threshold
+        :return: list of predictions - tuples of boxes, scores and labels
+        """
+        if confidence_threshold is None:
+            confidence_threshold = self.confidence_threshold
+        if len(cls_logits.shape) == 3:
+            scores = functional.softmax(cls_logits, dim=2)
+        else:
+            scores = onehot_labels(labels=cls_logits, n_classes=self.n_classes)
+        boxes = convert_locations_to_boxes(
+            locations=bbox_pred,
+            priors=self.anchors,
+            center_variance=self.center_variance,
+            size_variance=self.size_variance,
         )
-        boxes = boxes[approved_mask]
-        scores = scores[approved_mask]
-        labels = labels[approved_mask]
-
-        # reshape boxes to image size
-        boxes[:, 0::2] *= width
-        boxes[:, 1::2] *= height
-
-        # as of torchvision 0.6.0, cuda nms is broken (int overflow)
-        try:
-            keep_mask = batched_nms(
-                boxes=boxes,
-                scores=scores,
-                idxs=labels,
-                iou_threshold=nms_threshold,
-            )
-        except RuntimeError:
-            logger.warning("Torchvision NMS CUDA int overflow. Falling back to CPU.")
-            keep_mask = batched_nms(
-                boxes=boxes.cpu(),
-                scores=scores.cpu(),
-                idxs=labels.cpu(),
-                iou_threshold=nms_threshold,
-            )
-        # keep only top scoring predictions
-        keep_mask = keep_mask[:max_per_image]
-        boxes = boxes[keep_mask]
-        scores = scores[keep_mask]
-        labels = labels[keep_mask]
-
-        yield boxes, scores, labels
-
-
-def process_model_prediction(
-    config: CfgNode, cls_logits: torch.Tensor, bbox_pred: torch.Tensor
-) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
-    """Get readable results from model predictions.
-
-    :param config: SSD configuration
-    :param cls_logits: class predictions from model
-    :param bbox_pred: bounding box predictions from model
-    :return: list of predictions - tuples of boxes, scores and labels
-    """
-    priors = process_prior(
-        image_size=config.DATA.SHAPE,
-        feature_maps=config.DATA.PRIOR.FEATURE_MAPS,
-        min_sizes=config.DATA.PRIOR.MIN_SIZES,
-        max_sizes=config.DATA.PRIOR.MAX_SIZES,
-        strides=config.DATA.PRIOR.STRIDES,
-        aspect_ratios=config.DATA.PRIOR.ASPECT_RATIOS,
-        clip=config.DATA.PRIOR.CLIP,
-    ).to(cls_logits.device)
-    if len(cls_logits.shape) == 3:
-        scores = nn.functional.softmax(cls_logits, dim=2)
-    else:
-        scores = onehot_labels(labels=cls_logits, n_classes=config.DATA.N_CLASSES)
-    boxes = convert_locations_to_boxes(
-        locations=bbox_pred,
-        priors=priors,
-        center_variance=config.MODEL.CENTER_VARIANCE,
-        size_variance=config.MODEL.SIZE_VARIANCE,
-    )
-    boxes = center_bbox_to_corner_bbox(boxes)
-    detections = process_model_output(
-        detections=(scores, boxes),
-        image_size=config.DATA.SHAPE,
-        confidence_threshold=config.MODEL.CONFIDENCE_THRESHOLD,
-        nms_threshold=config.MODEL.NMS_THRESHOLD,
-        max_per_image=config.MODEL.MAX_PER_IMAGE,
-    )
-    return list(detections)
+        boxes = center_bbox_to_corner_bbox(boxes)
+        detections = self.process_model_output(
+            detections=(scores, boxes), confidence_threshold=confidence_threshold
+        )
+        return list(detections)
