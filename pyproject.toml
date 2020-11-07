@@ -31,7 +31,7 @@ pytest-xdist = "^2.1.0"
 ipython = "^7.19.0"
 
 [tool.poetry.scripts]
-ssd = "pyssd.cli:main"
+ssd = "pyssd.main:cli"
 
 [build-system]
 requires = ["poetry>=0.12"]
