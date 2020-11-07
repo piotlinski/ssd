@@ -12,19 +12,6 @@ from pyssd.data.priors import (
 )
 
 
-@pytest.fixture
-def prior_data():
-    """Prepare sample prior data."""
-    return {
-        "image_size": (300, 300),
-        "feature_maps": (4, 2),
-        "min_sizes": (2, 1),
-        "max_sizes": (3, 2),
-        "strides": (2, 1),
-        "aspect_ratios": ((2, 3), (2,)),
-    }
-
-
 @pytest.mark.parametrize(
     "indices, image_size, stride, expected",
     [
