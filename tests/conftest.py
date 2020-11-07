@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 import torch
 
@@ -9,23 +11,10 @@ def sample_image():
 
 
 @pytest.fixture
-def ssd_params():
+@patch("pyssd.data.datasets.mnist.h5py.File")
+def ssd_params(_file_mock):
     """Create kwargs for SSD."""
-    return {
-        "backbone_name": "VGG300",
-        "use_pretrained_backbone": False,
-        "predictor_name": "SSD",
-        "image_size": (300, 300),
-        "n_classes": 11,
-        "center_variance": 0.2,
-        "size_variance": 0.1,
-        "iou_threshold": 0.5,
-        "confidence_threshold": 0.8,
-        "nms_threshold": 0.5,
-        "max_per_image": 100,
-        "class_labels": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-        "object_label": "digit",
-    }
+    return {"dataset_name": "MNIST", "data_dir": "test"}
 
 
 @pytest.fixture

@@ -30,7 +30,7 @@ def plot_image(
         ax = plt.gca()
     ax.axis("off")
     label_names = model.class_labels
-    numpy_image = image.cpu().numpy()
+    numpy_image = image.detach().numpy()
     ax.imshow(numpy_image)
     if prediction is not None:
         colors = plt.cm.get_cmap("Dark2")

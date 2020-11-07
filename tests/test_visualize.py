@@ -20,7 +20,7 @@ def test_plot_image_only(imshow_mock, add_patch_mock, sample_image, ssd_params):
 def test_plot_image_with_bbox(imshow_mock, add_patch_mock, sample_image, ssd_params):
     """Test if only image is plotted correctly."""
     model = SSD(**ssd_params)
-    cls_logits, bbox_pred = model(sample_image.unsqueeze(0))
+    cls_logits, bbox_pred = model.predictor(model.backbone(sample_image.unsqueeze(0)))
     plot_image(
         sample_image,
         model=model,

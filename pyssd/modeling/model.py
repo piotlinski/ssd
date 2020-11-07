@@ -1,5 +1,6 @@
 """SSD model."""
 import logging
+from argparse import ArgumentParser
 from typing import Any, Iterable, List, Optional, Tuple
 
 import pytorch_lightning as pl
@@ -28,11 +29,14 @@ class SSD(pl.LightningModule):
         self,
         dataset_name: str,
         data_dir: str,
-        lr: float = 1e-3,
+        learning_rate: float = 1e-3,
+        lr_reduce_patience: int = 10,
         batch_size: int = 32,
         num_workers: int = 8,
         pin_memory: bool = True,
         n_classes: Optional[int] = None,
+        flip_train: bool = False,
+        augment_colors_train: bool = False,
         backbone_name: str = "VGG300",
         use_pretrained_backbone: bool = False,
         predictor_name: str = "SSD",
@@ -42,22 +46,24 @@ class SSD(pl.LightningModule):
         center_variance: float = 0.1,
         size_variance: float = 0.2,
         iou_threshold: float = 0.5,
-        confidence_threshold: float = 0.2,
+        confidence_threshold: float = 0.8,
         nms_threshold: float = 0.45,
         max_per_image: int = 100,
         negative_positive_ratio: float = 3,
-        flip_train: bool = False,
-        augment_colors_train: bool = False,
+        **_kwargs,
     ):
         """
         :param dataset_name: used dataset name
         :param data_dir: dataset data directory path
-        :param lr: learning rate
+        :param learning_rate: learning rate
+        :param lr_reduce_patience: learning rate reduce on plateau patience (epochs)
         :param batch_size: mini-batch size for training
         :param num_workers: number of workers for dataloader
         :param pin_memory: pin memory for training
         :param n_classes: number of classes (if 2 then no classification),
             defaults to number of classes in the dataset
+        :param flip_train: perform random flipping on train images
+        :param augment_colors_train: perform random colors augmentation on train images
         :param backbone_name: used backbone name
         :param use_pretrained_backbone: download pretrained weights for backbone
         :param predictor_name: used predictor name
@@ -72,8 +78,6 @@ class SSD(pl.LightningModule):
         :param max_per_image: max number of detections per image
         :param negative_positive_ratio: the ratio between the negative examples and
             positive examples for calculating loss
-        :param flip_train: perform random flipping on train images
-        :param augment_colors_train: perform random colors augmentation on train images
         """
         super().__init__()
         self.dataset = datasets[dataset_name]
@@ -118,14 +122,167 @@ class SSD(pl.LightningModule):
         self.class_labels = (
             self.dataset.CLASS_LABELS if n_classes != 2 else [self.dataset.OBJECT_LABEL]
         )
-        self.flip_train = flip_train
-        self.augment_colors_train = augment_colors_train
 
         self.criterion = MultiBoxLoss(negative_positive_ratio)
-        self.lr = lr
+        self.lr = learning_rate
+        self.lr_reduce_patience = lr_reduce_patience
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.pin_memory = pin_memory
+        self.n_classes = n_classes
+        self.flip_train = flip_train
+        self.augment_colors_train = augment_colors_train
+
+        self.save_hyperparameters()
+
+    @staticmethod
+    def add_model_specific_args(parent_parser: ArgumentParser):
+        """Add SSD args to parent argument parser."""
+        parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        parser.add_argument(
+            "--dataset-name",
+            type=str,
+            default="MNIST",
+            help=f"Used dataset name. Available: {list(datasets.keys())}",
+        )
+        parser.add_argument(
+            "--data-dir", type=str, default="data", help="Dataset files directory"
+        )
+        parser.add_argument(
+            "--learning-rate",
+            type=float,
+            default=1e-3,
+            help="Learning rate used for training the model",
+        )
+        parser.add_argument(
+            "--lr-reduce-patience",
+            type=int,
+            default=10,
+            help="Number of epochs with no improvement in validation loss "
+            "required to reduce the learning rate",
+        )
+        parser.add_argument(
+            "--batch-size",
+            type=int,
+            default=32,
+            help="Mini-batch size used for training the model",
+        )
+        parser.add_argument(
+            "--num-workers",
+            type=int,
+            default=8,
+            help="Number of workers used to load the dataset",
+        )
+        parser.add_argument(
+            "--pin-memory",
+            default=True,
+            action="store_true",
+            help="Pin data in memory while training",
+        )
+        parser.add_argument("--no-pin-memory", dest="pin_memory", action="store_false")
+        parser.add_argument(
+            "--n-classes",
+            type=int,
+            default=None,
+            help="Number of classes used for training. "
+            "If == 2 then only detection without classification",
+        )
+        parser.add_argument(
+            "--backbone-name",
+            type=str,
+            default="VGG300",
+            help=f"Used backbone name. Available: {list(backbones.keys())}",
+        )
+        parser.add_argument(
+            "--use-pretrained-backbone",
+            default=False,
+            action="store_true",
+            help="Start off from pretrained weights from torchvision",
+        )
+        parser.add_argument(
+            "--no-use-pretrained-backbone",
+            dest="use_pretrained_backbone",
+            action="store_false",
+        )
+        parser.add_argument(
+            "--predictor-name",
+            type=str,
+            default="SSD",
+            help=f"Used box predictor name. Available: {list(box_predictors.keys())}",
+        )
+        parser.add_argument(
+            "--image-size",
+            nargs=2,
+            type=int,
+            default=[300, 300],
+            help="Size of the model input image",
+        )
+        parser.add_argument(
+            "--pixel-mean",
+            nargs=3,
+            type=float,
+            default=[0.0, 0.0, 0.0],
+            help="Input image pixel means.",
+        )
+        parser.add_argument(
+            "--pixel-std",
+            nargs=3,
+            type=float,
+            default=[1.0, 1.0, 1.0],
+            help="Input image pixel stds.",
+        )
+        parser.add_argument(
+            "--center-variance", type=float, default=0.1, help="SSD box center variance"
+        )
+        parser.add_argument(
+            "--size-variance", type=float, default=0.2, help="SSD box size variance"
+        )
+        parser.add_argument(
+            "--iou-threshold", type=float, default=0.5, help="IOU threshold for anchors"
+        )
+        parser.add_argument(
+            "--confidence-threshold",
+            type=float,
+            default=0.8,
+            help="Minimum prediction confidence to approve during inference",
+        )
+        parser.add_argument(
+            "--nms-threshold",
+            type=float,
+            default=0.45,
+            help="Non-max suppression IOU threshold",
+        )
+        parser.add_argument(
+            "--max-per-image",
+            type=int,
+            default=100,
+            help="Max number of detections returned per image during inference",
+        )
+        parser.add_argument(
+            "--negative-positive-ratio",
+            type=float,
+            default=3,
+            help="Ratio between negative and positive examples for loss",
+        )
+        parser.add_argument(
+            "--flip-train",
+            default=False,
+            action="store_true",
+            help="Flip train images during training",
+        )
+        parser.add_argument("--no-flip-train", dest="flip_train", action="store_false")
+        parser.add_argument(
+            "--augment-colors-train",
+            default=False,
+            action="store_true",
+            help="Perform random colors augmentation during training",
+        )
+        parser.add_argument(
+            "--no-augment-colors-train",
+            dest="augment_colors_train",
+            action="store_false",
+        )
+        return parser
 
     def process_model_output(
         self, detections: Tuple[torch.Tensor, torch.Tensor], confidence_threshold: float
@@ -285,7 +442,7 @@ class SSD(pl.LightningModule):
 
     def configure_optimizers(self):
         """Configure training optimizer."""
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         lr_scheduler = ReduceLROnPlateau(
             optimizer=optimizer, patience=self.lr_reduce_patience
         )
