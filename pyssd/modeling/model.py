@@ -1,55 +1,63 @@
 """SSD model."""
 import logging
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchvision.ops.boxes import batched_nms
 
 from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
 from pyssd.data.datasets import onehot_labels
 from pyssd.data.priors import process_prior
 from pyssd.data.transforms import SSDTargetTransform
+from pyssd.loss import MultiBoxLoss
 from pyssd.modeling.backbones import backbones
 from pyssd.modeling.box_predictors import box_predictors
 
 logger = logging.getLogger(__name__)
 
 
-class SSD(nn.Module):
+class SSD(pl.LightningModule):
     """SSD Detector class."""
 
     def __init__(
         self,
-        backbone_name: str,
-        use_pretrained_backbone: bool,
-        predictor_name: str,
-        image_size: Tuple[int, int],
         n_classes: int,
-        center_variance: float,
-        size_variance: float,
-        iou_threshold: float,
-        confidence_threshold: float,
-        nms_threshold: float,
-        max_per_image: int,
         class_labels: List[str],
         object_label: str,
+        lr: float = 1e-3,
+        backbone_name: str = "VGG300",
+        use_pretrained_backbone: bool = False,
+        predictor_name: str = "SSD",
+        image_size: Tuple[int, int] = (300, 300),
+        center_variance: float = 0.1,
+        size_variance: float = 0.2,
+        iou_threshold: float = 0.5,
+        confidence_threshold: float = 0.2,
+        nms_threshold: float = 0.45,
+        max_per_image: int = 100,
+        negative_positive_ratio: float = 3,
     ):
         """
+        :param n_classes: number of classes (if 2 then no classification)
+        :param class_labels: dataset class labels
+        :param object_label: dataset object label
+        :param lr: learning rate
         :param backbone_name: used backbone name
         :param use_pretrained_backbone: download pretrained weights for backbone
         :param predictor_name: used predictor name
         :param image_size: image size tuple
-        :param n_classes: number of classes (if 2 then no classification)
         :param center_variance: SSD center variance
         :param size_variance: SSD size variance
         :param iou_threshold: IOU threshold for anchors
         :param confidence_threshold: min prediction confidence to use as detection
         :param nms_threshold: non-max suppression IOU threshold
         :param max_per_image: max number of detections per image
-        :param class_labels: dataset class labels
-        :param object_label: dataset object label
+        :param negative_positive_ratio: the ratio between the negative examples and
+            positive examples for calculating loss
         """
         super().__init__()
         backbone = backbones[backbone_name]
@@ -88,10 +96,8 @@ class SSD(nn.Module):
         self.max_per_image = max_per_image
         self.class_labels = class_labels if n_classes != 2 else [object_label]
 
-    def forward(self, images):
-        features = self.backbone(images)
-        predictions = self.predictor(features)
-        return predictions
+        self.criterion = MultiBoxLoss(negative_positive_ratio)
+        self.lr = lr
 
     def process_model_output(
         self, detections: Tuple[torch.Tensor, torch.Tensor], confidence_threshold: float
@@ -193,3 +199,70 @@ class SSD(nn.Module):
             detections=(scores, boxes), confidence_threshold=confidence_threshold
         )
         return list(detections)
+
+    def forward(
+        self, images: torch.Tensor
+    ) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+        """Forward function for inference."""
+        features = self.backbone(images)
+        cls_logits, bbox_pred = self.predictor(features)
+        return self.process_model_prediction(cls_logits, bbox_pred)
+
+    def training_step(self, data: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]):
+        """Step for training."""
+        images, locations, labels = data
+
+        features = self.backbone(images)
+        cls_logits, bbox_pred = self.predictor(features)
+
+        regression_loss, classification_loss = self.criterion(
+            confidence=cls_logits,
+            predicted_locations=bbox_pred,
+            labels=labels,
+            gt_locations=locations,
+        )
+        loss = regression_loss + classification_loss
+
+        return {
+            "loss": loss,
+            "log": {
+                "loss-regression/train": regression_loss,
+                "loss-classification/train": classification_loss,
+                "loss-total/train": loss,
+            },
+        }
+
+    def validation_step(self, data: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]):
+        """Step for validation."""
+        return self.training_step(data)
+
+    def validation_epoch_end(self, outputs: List[Any]):
+        """Summarize after validation."""
+        regression_loss = []
+        classification_loss = []
+        loss = []
+        for output in outputs:
+            regression_loss.append(output["log"]["loss-regression/train"])
+            classification_loss.append(output["log"]["loss-classification/train"])
+            loss.append(output["loss"])
+
+        return {
+            "val_loss": torch.tensor(loss).mean(),
+            "log": {
+                "loss-regression/val": torch.tensor(regression_loss).mean(),
+                "loss-classification/val": torch.tensor(classification_loss).mean(),
+                "loss-total/val": torch.tensor(loss).mean(),
+            },
+        }
+
+    def configure_optimizers(self):
+        """Configure training optimizer."""
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        lr_scheduler = ReduceLROnPlateau(
+            optimizer=optimizer, patience=self.lr_reduce_patience
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": lr_scheduler,
+            "monitor": "val_loss",
+        }
