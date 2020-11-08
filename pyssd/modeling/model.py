@@ -5,7 +5,6 @@ from typing import Any, Iterable, List, Optional, Tuple
 
 import pytorch_lightning as pl
 import torch
-import torch.nn as nn
 import torch.nn.functional as functional
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data.dataloader import DataLoader
@@ -31,6 +30,7 @@ class SSD(pl.LightningModule):
         data_dir: str,
         learning_rate: float = 1e-3,
         lr_reduce_patience: int = 10,
+        lr_warmup_steps: int = 500,
         batch_size: int = 32,
         num_workers: int = 8,
         pin_memory: bool = True,
@@ -57,6 +57,7 @@ class SSD(pl.LightningModule):
         :param data_dir: dataset data directory path
         :param learning_rate: learning rate
         :param lr_reduce_patience: learning rate reduce on plateau patience (epochs)
+        :param lr_warmup_steps: number of steps with warmup
         :param batch_size: mini-batch size for training
         :param num_workers: number of workers for dataloader
         :param pin_memory: pin memory for training
@@ -84,6 +85,9 @@ class SSD(pl.LightningModule):
         self.data_dir = data_dir
         if n_classes is None:
             n_classes = len(self.dataset.CLASS_LABELS) + 1
+        self.class_labels = (
+            self.dataset.CLASS_LABELS if n_classes != 2 else [self.dataset.OBJECT_LABEL]
+        )
         backbone = backbones[backbone_name]
         self.backbone = backbone(use_pretrained=use_pretrained_backbone)
         predictor = box_predictors[predictor_name]
@@ -92,16 +96,13 @@ class SSD(pl.LightningModule):
             backbone_out_channels=self.backbone.out_channels,
             backbone_boxes_per_loc=self.backbone.boxes_per_loc,
         )
-        self.anchors = nn.Parameter(
-            process_prior(
-                image_size=image_size,
-                feature_maps=self.backbone.feature_maps,
-                min_sizes=self.backbone.min_sizes,
-                max_sizes=self.backbone.max_sizes,
-                strides=self.backbone.strides,
-                aspect_ratios=self.backbone.aspect_ratios,
-            ),
-            requires_grad=False,
+        self.anchors = process_prior(
+            image_size=image_size,
+            feature_maps=self.backbone.feature_maps,
+            min_sizes=self.backbone.min_sizes,
+            max_sizes=self.backbone.max_sizes,
+            strides=self.backbone.strides,
+            aspect_ratios=self.backbone.aspect_ratios,
         )
         self.target_transform = SSDTargetTransform(
             anchors=self.anchors,
@@ -119,13 +120,11 @@ class SSD(pl.LightningModule):
         self.confidence_threshold = confidence_threshold
         self.nms_threshold = nms_threshold
         self.max_per_image = max_per_image
-        self.class_labels = (
-            self.dataset.CLASS_LABELS if n_classes != 2 else [self.dataset.OBJECT_LABEL]
-        )
+        self.negative_positive_ratio = negative_positive_ratio
 
-        self.criterion = MultiBoxLoss(negative_positive_ratio)
         self.lr = learning_rate
         self.lr_reduce_patience = lr_reduce_patience
+        self.lr_warmup_steps = lr_warmup_steps
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.pin_memory = pin_memory
@@ -296,14 +295,13 @@ class SSD(pl.LightningModule):
         width, height = self.image_size
         scores_batches, boxes_batches = detections
         batch_size = scores_batches.size(0)
-        device = scores_batches.device
         for batch_idx in range(batch_size):
             scores = scores_batches[batch_idx]  # (N, num_classes)
             boxes = boxes_batches[batch_idx]  # (N, 4)
             n_boxes, n_classes = scores.shape
 
             boxes = boxes.view(n_boxes, 1, 4).expand(n_boxes, n_classes, 4)
-            labels = torch.arange(n_classes, device=device)
+            labels = torch.arange(n_classes)
             labels = labels.view(1, n_classes).expand_as(scores)
 
             # remove predictions with label == background
@@ -393,14 +391,18 @@ class SSD(pl.LightningModule):
         cls_logits, bbox_pred = self.predictor(features)
         return self.process_model_prediction(cls_logits, bbox_pred)
 
-    def training_step(self, data: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]):
+    def training_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
+    ):
         """Step for training."""
-        images, locations, labels = data
+        criterion = MultiBoxLoss(self.negative_positive_ratio)
+
+        images, locations, labels = batch
 
         features = self.backbone(images)
         cls_logits, bbox_pred = self.predictor(features)
 
-        regression_loss, classification_loss = self.criterion(
+        regression_loss, classification_loss = criterion(
             confidence=cls_logits,
             predicted_locations=bbox_pred,
             labels=labels,
@@ -417,9 +419,11 @@ class SSD(pl.LightningModule):
             },
         }
 
-    def validation_step(self, data: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]):
+    def validation_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
+    ):
         """Step for validation."""
-        return self.training_step(data)
+        return self.training_step(batch, batch_nb)
 
     def validation_epoch_end(self, outputs: List[Any]):
         """Summarize after validation."""
@@ -451,6 +455,17 @@ class SSD(pl.LightningModule):
             "lr_scheduler": lr_scheduler,
             "monitor": "val_loss",
         }
+
+    def optimizer_step(self, optimizer, *args, **kwargs):
+        """Perform optimizer step with warmup."""
+        if self.trainer.global_step < self.lr_warmup_steps:
+            lr_scale = min(
+                1.0, float(self.trainer.global_step + 1) / self.lr_warmup_steps
+            )
+            for pg in optimizer.param_groups:
+                pg["lr"] = lr_scale * self.hparams.learning_rate
+
+        super().optimizer_step(optimizer=optimizer, *args, **kwargs)
 
     def train_dataloader(self) -> DataLoader:
         """Prepare train dataloader."""

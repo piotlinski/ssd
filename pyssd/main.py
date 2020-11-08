@@ -11,6 +11,7 @@ def main(hparams):
     hparams_dict = vars(hparams)
     model = SSD(**hparams_dict)
     trainer = Trainer.from_argparse_args(hparams)
+    trainer.tune(model)
     trainer.fit(model)
 
 
