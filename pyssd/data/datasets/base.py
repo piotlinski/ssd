@@ -88,6 +88,6 @@ def onehot_labels(labels: torch.Tensor, n_classes: int):
     :param n_classes: number of classes
     :return: tensor of shape (batch_size x n_cells x n_classes) with one-hot encodings
     """
-    onehot = torch.zeros((*labels.shape[:2], n_classes))
+    onehot = torch.zeros((*labels.shape[:2], n_classes), device=labels.device)
     onehot.scatter_(-1, labels.unsqueeze(-1), 1.0)
     return onehot

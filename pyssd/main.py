@@ -31,6 +31,7 @@ def main(hparams):
         save_dir=hparams.default_root_dir,
         project="ssd",
     )
+    logger.watch(model, log=hparams.watch, log_freq=hparams.watch_freq)
     trainer = Trainer.from_argparse_args(
         hparams, logger=logger, callbacks=[checkpoint_callback]
     )
@@ -57,6 +58,19 @@ def cli():
     parser = SSD.add_model_specific_args(parser)
     parser.add_argument(
         "--n-checkpoints", type=int, default=3, help="Number of top checkpoints to save"
+    )
+    parser.add_argument(
+        "--watch",
+        type=str,
+        default=None,
+        help="Log model topology as well as optionally gradients and weights. "
+        "Available options: None, gradients, parameters, all",
+    )
+    parser.add_argument(
+        "--watch-freq",
+        type=int,
+        default=100,
+        help="How often to perform model watch.",
     )
     parser = Trainer.add_argparse_args(parser)
     args = parser.parse_args()

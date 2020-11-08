@@ -1,130 +1,66 @@
 """Visualization utils."""
-from random import shuffle
-from typing import List, Optional, Tuple
+from typing import Any, Dict, Iterable, List
 
-import matplotlib.pyplot as plt
 import torch
-from matplotlib import patches
-
-from pyssd.modeling.model import SSD
 
 
-def plot_image(
-    image: torch.tensor,
-    model: SSD,
-    prediction: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-    ax: Optional[plt.Axes] = None,
-    confidence_threshold: Optional[float] = None,
-) -> plt.Axes:
-    """Plot an image with predicted bounding boxes.
-
-    :param image: Input image
-    :param model: used prediction model
-    :param prediction: optional class logits and bbox predictions for the image
-        (keep batch dimension as 1)
-    :param ax: optional axis to plot on
-    :param confidence_threshold: Optional confidence threshold to set
-    :return: matplotlib axis with image and optional bounding boxes
-    """
-    if ax is None:
-        ax = plt.gca()
-    ax.axis("off")
-    label_names = model.class_labels
-    numpy_image = image.detach().numpy()
-    ax.imshow(numpy_image)
-    if prediction is not None:
-        colors = plt.cm.get_cmap("Dark2")
-        cls_logits, bbox_pred = prediction
-        ((boxes, scores, labels),) = model.process_model_prediction(
-            cls_logits.unsqueeze(0),
-            bbox_pred.unsqueeze(0),
-            confidence_threshold=confidence_threshold,
-        )
-        for box, score, label in zip(boxes, scores, labels):
-            color = colors(label.item() / (model.n_classes - 1))
-            x1, y1, x2, y2 = box.int()
-            rect = patches.Rectangle(
-                (x1, y1),
-                x2 - x1,
-                y2 - y1,
-                linewidth=1,
-                edgecolor=color,
-                facecolor="none",
-            )
-            ax.text(
-                x1,
-                y2,
-                f"{label_names[int(label.item() - 1)]}: {score.item():.2f}",
-                verticalalignment="top",
-                color="w",
-                fontsize="x-small",
-                fontweight="semibold",
-                clip_on=True,
-                bbox=dict(pad=0, facecolor=color, alpha=0.8),
-            )
-            ax.add_patch(rect)
-    return ax
+def create_box_list(
+    boxes: torch.Tensor,
+    scores: torch.Tensor,
+    labels: torch.Tensor,
+    class_labels: List[str],
+    label_prefix: str = "",
+) -> Iterable[Dict[str, Any]]:
+    """Create list with box information for wandb."""
+    for box, score, label in zip(boxes, scores, labels):
+        x1, y1, x2, y2 = box.int()
+        yield {
+            "position": {
+                "minX": x1.item(),
+                "maxX": x2.item(),
+                "minY": y1.item(),
+                "maxY": y2.item(),
+            },
+            "class_id": label.item(),
+            "box_caption": f"{label_prefix}{class_labels[int(label.item() - 1)]}",
+            "domain": "pixel",
+            "scores": {"score": score.item()},
+        }
 
 
-def plot_images_from_batch(
-    image_batch: torch.Tensor,
-    pred_cls_logits: torch.Tensor,
-    pred_bbox_pred: torch.Tensor,
+def get_boxes(
+    gt_boxes: torch.Tensor,
+    gt_scores: torch.Tensor,
     gt_labels: torch.Tensor,
-    gt_bbox_pred: torch.Tensor,
-    model: SSD,
-    pixel_mean: Tuple[float, ...],
-    pixel_std: Tuple[float, ...],
-    n_examples: int,
-    confidence_thresholds: List[float],
-) -> plt.Figure:
-    """Randomly select images from batch and plot with varying confidence.
-
-    :param image_batch: image batch
-    :param pred_cls_logits: predicted cls_logits
-    :param pred_bbox_pred: predicted bbox_pred
-    :param gt_labels: ground truth labels
-    :param gt_bbox_pred: ground truth bbox_pred
-    :param model: used SSD model
-    :param pixel_mean: data pixel mean per channel
-    :param pixel_std: data pixel std per channel
-    :param n_examples: number of examples to plot
-    :param confidence_thresholds: confidence thresholds to set for plotting
-    :return: figure with visualization
-    """
-    indices = list(range(image_batch.shape[0]))
-    shuffle(indices)
-    fig = plt.Figure(figsize=(4 * (len(confidence_thresholds) + 1), 4 * n_examples))
-    for idx, example_idx in enumerate(indices[:n_examples]):
-        image = image_batch[example_idx].permute(1, 2, 0)
-        denominator = torch.reciprocal(torch.tensor(pixel_std, device=image.device))
-        image = image / denominator + torch.tensor(pixel_mean, device=image.device)
-        image.clamp_(min=0, max=1)
-        subplot_idx = idx * (len(confidence_thresholds) + 1) + 1
-        ax = fig.add_subplot(n_examples, len(confidence_thresholds) + 1, subplot_idx)
-        plot_image(
-            image=image,
-            model=model,
-            prediction=(
-                gt_labels[example_idx],
-                gt_bbox_pred[example_idx],
+    boxes: torch.Tensor,
+    scores: torch.Tensor,
+    labels: torch.Tensor,
+    class_labels: List[str],
+):
+    """Get wandb image with predictions."""
+    boxes = {
+        "predictions": {
+            "box_data": list(
+                create_box_list(
+                    boxes=boxes,
+                    scores=scores,
+                    labels=labels,
+                    class_labels=class_labels,
+                )
             ),
-            ax=ax,
-        )
-        ax.set_title("gt")
-        for conf_idx, conf in enumerate(confidence_thresholds, start=1):
-            ax = fig.add_subplot(
-                n_examples, len(confidence_thresholds) + 1, subplot_idx + conf_idx
-            )
-            plot_image(
-                image=image,
-                model=model,
-                prediction=(
-                    pred_cls_logits[example_idx],
-                    pred_bbox_pred[example_idx],
-                ),
-                ax=ax,
-                confidence_threshold=conf,
-            )
-            ax.set_title(f"thresh={conf}")
-    return fig
+            "class_labels": dict(enumerate(class_labels, start=1)),
+        },
+        "ground_truth": {
+            "box_data": list(
+                create_box_list(
+                    boxes=gt_boxes,
+                    scores=gt_scores,
+                    labels=gt_labels,
+                    class_labels=class_labels,
+                    label_prefix="gt_",
+                )
+            ),
+            "class_labels": dict(enumerate(class_labels, start=1)),
+        },
+    }
+    return boxes

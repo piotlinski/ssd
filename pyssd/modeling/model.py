@@ -6,6 +6,7 @@ from typing import Iterable, List, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as functional
+import wandb
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
@@ -17,6 +18,7 @@ from pyssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTr
 from pyssd.loss import MultiBoxLoss
 from pyssd.modeling.backbones import backbones
 from pyssd.modeling.box_predictors import box_predictors
+from pyssd.visualize import get_boxes
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +52,7 @@ class SSD(pl.LightningModule):
         nms_threshold: float = 0.45,
         max_per_image: int = 100,
         negative_positive_ratio: float = 3,
-        watch: Optional[str] = None,
-        watch_freq: int = 100,
+        visualize: bool = True,
         **_kwargs,
     ):
         """
@@ -81,8 +82,6 @@ class SSD(pl.LightningModule):
         :param max_per_image: max number of detections per image
         :param negative_positive_ratio: the ratio between the negative examples and
             positive examples for calculating loss
-        :param watch: log model changes in wandb
-        :param watch_freq: model changes loggin frequency
         """
         super().__init__()
         self.dataset = datasets[dataset_name]
@@ -135,8 +134,7 @@ class SSD(pl.LightningModule):
         self.n_classes = n_classes
         self.flip_train = flip_train
         self.augment_colors_train = augment_colors_train
-        self.watch = watch
-        self.watch_freq = watch_freq
+        self.visualize = visualize
 
         self.save_hyperparameters()
 
@@ -288,18 +286,12 @@ class SSD(pl.LightningModule):
             action="store_false",
         )
         parser.add_argument(
-            "--watch",
-            type=str,
-            default=None,
-            help="Log model topology as well as optionally gradients and weights. "
-            "Available options: None, gradients, parameters, all",
+            "--visualize",
+            default=True,
+            action="store_true",
+            help="Log visualizations of model predictions",
         )
-        parser.add_argument(
-            "--watch-freq",
-            type=int,
-            default=100,
-            help="How often to perform model watch.",
-        )
+        parser.add_argument("--no-visualize", dest="visualize", action="store_false")
         return parser
 
     def process_model_output(
@@ -392,7 +384,7 @@ class SSD(pl.LightningModule):
             scores = onehot_labels(labels=cls_logits, n_classes=self.n_classes)
         boxes = convert_locations_to_boxes(
             locations=bbox_pred,
-            priors=self.anchors,
+            priors=self.anchors.to(bbox_pred.device),
             center_variance=self.center_variance,
             size_variance=self.size_variance,
         )
@@ -411,7 +403,10 @@ class SSD(pl.LightningModule):
         return self.process_model_prediction(cls_logits, bbox_pred)
 
     def common_run_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], stage: str
+        self,
+        batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+        batch_nb: int,
+        stage: str,
     ):
         """Common model running step for training and validation."""
         criterion = MultiBoxLoss(self.negative_positive_ratio)
@@ -429,7 +424,7 @@ class SSD(pl.LightningModule):
         )
         loss = regression_loss + classification_loss
 
-        self.log(f"{stage}_loss", loss, prog_bar=True, logger=True)
+        self.log(f"{stage}_loss", loss, prog_bar=False, logger=True)
         self.log(
             f"{stage}_regression_loss", regression_loss, prog_bar=False, logger=True
         )
@@ -440,21 +435,55 @@ class SSD(pl.LightningModule):
             logger=True,
         )
 
+        if batch_nb == 0 and self.visualize:  # perform at the beginning of each epoch
+            image = images[0].detach().permute(1, 2, 0)
+            denominator = torch.reciprocal(
+                torch.tensor(self.pixel_std, device=self.device)
+            )
+            image = image / denominator + torch.tensor(
+                self.pixel_mean, device=self.device
+            )
+            image.clamp_(min=0, max=1)
+
+            ((gt_boxes, gt_scores, gt_labels),) = self.process_model_prediction(
+                labels[0].detach().unsqueeze(0),
+                locations[0].detach().unsqueeze(0),
+                confidence_threshold=0.0,
+            )
+            ((boxes, scores, labels),) = self.process_model_prediction(
+                cls_logits[0].detach().unsqueeze(0),
+                bbox_pred[0].detach().unsqueeze(0),
+                confidence_threshold=0.0,
+            )
+            log_boxes = get_boxes(
+                gt_boxes=gt_boxes.cpu(),
+                gt_scores=gt_scores.cpu(),
+                gt_labels=gt_labels.cpu(),
+                boxes=boxes.cpu(),
+                scores=scores.cpu(),
+                labels=labels.cpu(),
+                class_labels=self.class_labels,
+            )
+            log_image = wandb.Image(
+                image.cpu().numpy(),
+                boxes=log_boxes,
+                caption="object detection predictions",
+            )
+            self.logger.experiment.log({f"{stage}_predictions": log_image})
+
         return loss
 
     def training_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
     ):
         """Step for training."""
-        loss = self.common_run_step(batch, stage="train")
-        self.logger.watch(self, log=self.watch, log_freq=self.watch_freq)
-        return loss
+        return self.common_run_step(batch, batch_nb, stage="train")
 
     def validation_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
     ):
         """Step for validation."""
-        return self.common_run_step(batch, stage="val")
+        return self.common_run_step(batch, batch_nb, stage="val")
 
     def configure_optimizers(self):
         """Configure training optimizer."""
