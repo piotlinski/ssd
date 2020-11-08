@@ -219,3 +219,6 @@ dmypy.json
 
 # lightning dir
 lightning_logs/*
+
+# data dir
+data/*
