@@ -15,10 +15,10 @@ from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_b
 from pyssd.data.datasets import datasets, onehot_labels
 from pyssd.data.priors import process_prior
 from pyssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
-from pyssd.loss import MultiBoxLoss
 from pyssd.modeling.backbones import backbones
 from pyssd.modeling.box_predictors import box_predictors
-from pyssd.visualize import get_boxes
+from pyssd.modeling.loss import MultiBoxLoss
+from pyssd.modeling.visualize import get_boxes
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
 """Test visualization tools."""
 import torch
 
-from pyssd.visualize import get_boxes
+from pyssd.modeling.visualize import get_boxes
 
 
 def test_get_boxes():
