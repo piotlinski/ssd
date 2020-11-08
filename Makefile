@@ -16,7 +16,7 @@ build.prod: ## Build docker production image
 shell: ## Run docker dev shell
 	$(DOCKER_RUN) -it $(tag)-dev /bin/bash
 
-args ?= -n auto -vvv --cov pyssd
+args ?= -vvv --cov pyssd
 test: ## Run tests
 	poetry run pytest $(args)
 
