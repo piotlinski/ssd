@@ -391,10 +391,8 @@ class SSD(pl.LightningModule):
         cls_logits, bbox_pred = self.predictor(features)
         return self.process_model_prediction(cls_logits, bbox_pred)
 
-    def training_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
-    ):
-        """Step for training."""
+    def common_run_step(self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]):
+        """Common model running step for training and validation."""
         criterion = MultiBoxLoss(self.negative_positive_ratio)
 
         images, locations, labels = batch
@@ -410,39 +408,54 @@ class SSD(pl.LightningModule):
         )
         loss = regression_loss + classification_loss
 
-        return {
-            "loss": loss,
-            "log": {
-                "loss-regression/train": regression_loss,
-                "loss-classification/train": classification_loss,
-                "loss-total/train": loss,
-            },
-        }
+        return loss, regression_loss, classification_loss
+
+    def training_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
+    ):
+        """Step for training."""
+        loss, regression_loss, classification_loss = self.common_run_step(batch)
+        self.log("train loss", loss, prog_bar=True, logger=True)
+        self.log("train regression loss", regression_loss, prog_bar=False, logger=True)
+        self.log(
+            "train classification loss",
+            classification_loss,
+            prog_bar=False,
+            logger=True,
+        )
 
     def validation_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
     ):
         """Step for validation."""
-        return self.training_step(batch, batch_nb)
+        return self.common_run_step(batch)
 
     def validation_epoch_end(self, outputs: List[Any]):
         """Summarize after validation."""
-        regression_loss = []
-        classification_loss = []
-        loss = []
+        regression_losses = []
+        classification_losses = []
+        losses = []
         for output in outputs:
-            regression_loss.append(output["log"]["loss-regression/train"])
-            classification_loss.append(output["log"]["loss-classification/train"])
-            loss.append(output["loss"])
+            losses.append(output[0])
+            regression_losses.append(output[1])
+            classification_losses.append(output[2])
 
-        return {
-            "val_loss": torch.tensor(loss).mean(),
-            "log": {
-                "loss-regression/val": torch.tensor(regression_loss).mean(),
-                "loss-classification/val": torch.tensor(classification_loss).mean(),
-                "loss-total/val": torch.tensor(loss).mean(),
-            },
-        }
+        avg_loss = torch.tensor(losses).mean()
+        avg_regression_loss = torch.tensor(regression_losses).mean()
+        avg_classification_loss = torch.tensor(classification_losses).mean()
+
+        self.log("val loss", avg_loss, prog_bar=True, logger=True)
+        self.log(
+            "val regression loss", avg_regression_loss, prog_bar=False, logger=True
+        )
+        self.log(
+            "val classification loss",
+            avg_classification_loss,
+            prog_bar=False,
+            logger=True,
+        )
+
+        return {"val_loss": avg_loss}
 
     def configure_optimizers(self):
         """Configure training optimizer."""

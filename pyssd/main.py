@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
 
 from pyssd.modeling.model import SSD
 
@@ -21,7 +22,17 @@ def main(hparams):
         save_top_k=hparams.n_checkpoints,
         mode="min",
     )
-    trainer = Trainer.from_argparse_args(hparams, callbacks=[checkpoint_callback])
+    logger = WandbLogger(
+        name=(
+            f"{hparams.dataset_name}-"
+            f"{hparams.backbone_name}_{hparams.predictor_name}{hparams.image_size[0]}-"
+            f"bs{hparams.batch_size}-lr{hparams.learning_rate}"
+        ),
+        project="ssd",
+    )
+    trainer = Trainer.from_argparse_args(
+        hparams, logger=logger, callbacks=[checkpoint_callback]
+    )
     trainer.tune(model)
     trainer.fit(model)
 
