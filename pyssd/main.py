@@ -28,6 +28,7 @@ def main(hparams):
             f"{hparams.backbone_name}_{hparams.predictor_name}{hparams.image_size[0]}-"
             f"bs{hparams.batch_size}-lr{hparams.learning_rate}"
         ),
+        save_dir=hparams.default_root_dir,
         project="ssd",
     )
     trainer = Trainer.from_argparse_args(

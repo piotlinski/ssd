@@ -1,7 +1,7 @@
 """SSD model."""
 import logging
 from argparse import ArgumentParser
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 import pytorch_lightning as pl
 import torch
@@ -391,7 +391,9 @@ class SSD(pl.LightningModule):
         cls_logits, bbox_pred = self.predictor(features)
         return self.process_model_prediction(cls_logits, bbox_pred)
 
-    def common_run_step(self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]):
+    def common_run_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], stage: str
+    ):
         """Common model running step for training and validation."""
         criterion = MultiBoxLoss(self.negative_positive_ratio)
 
@@ -408,54 +410,30 @@ class SSD(pl.LightningModule):
         )
         loss = regression_loss + classification_loss
 
-        return loss, regression_loss, classification_loss
-
-    def training_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
-    ):
-        """Step for training."""
-        loss, regression_loss, classification_loss = self.common_run_step(batch)
-        self.log("train loss", loss, prog_bar=True, logger=True)
-        self.log("train regression loss", regression_loss, prog_bar=False, logger=True)
+        self.log(f"{stage}_loss", loss, prog_bar=True, logger=True)
         self.log(
-            "train classification loss",
+            f"{stage}_regression_loss", regression_loss, prog_bar=False, logger=True
+        )
+        self.log(
+            f"{stage}_classification_loss",
             classification_loss,
             prog_bar=False,
             logger=True,
         )
 
+        return loss
+
+    def training_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
+    ):
+        """Step for training."""
+        return self.common_run_step(batch, stage="train")
+
     def validation_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
     ):
         """Step for validation."""
-        return self.common_run_step(batch)
-
-    def validation_epoch_end(self, outputs: List[Any]):
-        """Summarize after validation."""
-        regression_losses = []
-        classification_losses = []
-        losses = []
-        for output in outputs:
-            losses.append(output[0])
-            regression_losses.append(output[1])
-            classification_losses.append(output[2])
-
-        avg_loss = torch.tensor(losses).mean()
-        avg_regression_loss = torch.tensor(regression_losses).mean()
-        avg_classification_loss = torch.tensor(classification_losses).mean()
-
-        self.log("val loss", avg_loss, prog_bar=True, logger=True)
-        self.log(
-            "val regression loss", avg_regression_loss, prog_bar=False, logger=True
-        )
-        self.log(
-            "val classification loss",
-            avg_classification_loss,
-            prog_bar=False,
-            logger=True,
-        )
-
-        return {"val_loss": avg_loss}
+        return self.common_run_step(batch, stage="val")
 
     def configure_optimizers(self):
         """Configure training optimizer."""
