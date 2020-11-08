@@ -10,8 +10,9 @@ format: ## Run pre-commit hooks to format code
 build.dev: ## Build docker development image
 	docker build -f dockerfiles/Dockerfile.dev -t $(tag)-dev .
 
+WANDB_API_KEY ?=
 build.prod: ## Build docker production image
-	docker build -f dockerfiles/Dockerfile.prod -t $(tag) .
+	docker build  --build-arg WANDB_API_KEY=$(WANDB_API_KEY) -f dockerfiles/Dockerfile.prod -t $(tag) .
 
 shell: ## Run docker dev shell
 	$(DOCKER_RUN) -it $(tag)-dev /bin/bash
@@ -21,6 +22,6 @@ test: ## Run tests
 	poetry run pytest $(args)
 
 gpu ?= 3
-ssd_args ?= ssd --help
+ssd_args ?= ssd --default_root_dir runs
 run: ## Run model
 	$(DOCKER_RUN) --gpus '"device=$(gpu)"' --shm-size 24G $(tag) $(ssd_args)
