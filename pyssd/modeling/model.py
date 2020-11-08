@@ -50,6 +50,8 @@ class SSD(pl.LightningModule):
         nms_threshold: float = 0.45,
         max_per_image: int = 100,
         negative_positive_ratio: float = 3,
+        watch: Optional[str] = None,
+        watch_freq: int = 100,
         **_kwargs,
     ):
         """
@@ -79,6 +81,8 @@ class SSD(pl.LightningModule):
         :param max_per_image: max number of detections per image
         :param negative_positive_ratio: the ratio between the negative examples and
             positive examples for calculating loss
+        :param watch: log model changes in wandb
+        :param watch_freq: model changes loggin frequency
         """
         super().__init__()
         self.dataset = datasets[dataset_name]
@@ -131,6 +135,8 @@ class SSD(pl.LightningModule):
         self.n_classes = n_classes
         self.flip_train = flip_train
         self.augment_colors_train = augment_colors_train
+        self.watch = watch
+        self.watch_freq = watch_freq
 
         self.save_hyperparameters()
 
@@ -281,6 +287,19 @@ class SSD(pl.LightningModule):
             dest="augment_colors_train",
             action="store_false",
         )
+        parser.add_argument(
+            "--watch",
+            type=str,
+            default=None,
+            help="Log model topology as well as optionally gradients and weights. "
+            "Available options: None, gradients, parameters, all",
+        )
+        parser.add_argument(
+            "--watch-freq",
+            type=int,
+            default=100,
+            help="How often to perform model watch.",
+        )
         return parser
 
     def process_model_output(
@@ -427,7 +446,9 @@ class SSD(pl.LightningModule):
         self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
     ):
         """Step for training."""
-        return self.common_run_step(batch, stage="train")
+        loss = self.common_run_step(batch, stage="train")
+        self.logger.watch(self, log=self.watch, log_freq=self.watch_freq)
+        return loss
 
     def validation_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_nb: int
