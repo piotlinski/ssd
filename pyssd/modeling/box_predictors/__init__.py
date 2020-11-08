@@ -1,7 +1,5 @@
-from typing import Dict
+from typing import Dict, Type
 
-import torch.nn as nn
+from pyssd.modeling.box_predictors.ssd import BaseBoxPredictor, SSDBoxPredictor
 
-from pyssd.modeling.box_predictors.ssd import SSDBoxPredictor
-
-box_predictors: Dict[str, nn.Module] = {"SSD": SSDBoxPredictor}
+box_predictors: Dict[str, Type[BaseBoxPredictor]] = {"SSD": SSDBoxPredictor}

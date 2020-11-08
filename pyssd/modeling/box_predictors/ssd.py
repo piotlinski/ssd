@@ -3,16 +3,21 @@ from typing import List, Tuple
 
 import torch
 import torch.nn as nn
-from yacs.config import CfgNode
 
 
-class BoxPredictor(nn.Module):
+class BaseBoxPredictor(nn.Module):
     """Base class for box predictor."""
 
-    def __init__(self, config: CfgNode, backbone_out_channels: List[int]):
+    def __init__(
+        self,
+        n_classes: int,
+        backbone_out_channels: List[int],
+        backbone_boxes_per_loc: List[int],
+    ):
         super().__init__()
+        self.n_classes = n_classes
         self.backbone_out_channels = backbone_out_channels
-        self.config = config
+        self.backbone_boxes_per_loc = backbone_boxes_per_loc
         self.cls_headers = self._build_cls_headers()
         self.reg_headers = self._build_reg_headers()
         self.reset_params()
@@ -43,7 +48,7 @@ class BoxPredictor(nn.Module):
                 cls_header(feature)
                 .permute(0, 2, 3, 1)
                 .contiguous()
-                .view(batch_size, -1, self.config.DATA.N_CLASSES)
+                .view(batch_size, -1, self.n_classes)
             )
             bbox_pred.append(
                 reg_header(feature)
@@ -58,7 +63,7 @@ class BoxPredictor(nn.Module):
         return cls_logits, bbox_pred
 
 
-class SSDBoxPredictor(BoxPredictor):
+class SSDBoxPredictor(BaseBoxPredictor):
     """SSD Box Predictor."""
 
     def _build_cls_headers(self) -> nn.ModuleList:
@@ -66,13 +71,13 @@ class SSDBoxPredictor(BoxPredictor):
         layers = [
             nn.Conv2d(
                 in_channels=channels,
-                out_channels=boxes * self.config.DATA.N_CLASSES,
+                out_channels=boxes * self.n_classes,
                 kernel_size=3,
                 stride=1,
                 padding=1,
             )
             for boxes, channels in zip(
-                self.config.DATA.PRIOR.BOXES_PER_LOC, self.backbone_out_channels
+                self.backbone_boxes_per_loc, self.backbone_out_channels
             )
         ]
         return nn.ModuleList(layers)
@@ -88,7 +93,7 @@ class SSDBoxPredictor(BoxPredictor):
                 padding=1,
             )
             for boxes, channels in zip(
-                self.config.DATA.PRIOR.BOXES_PER_LOC, self.backbone_out_channels
+                self.backbone_boxes_per_loc, self.backbone_out_channels
             )
         ]
         return nn.ModuleList(layers)

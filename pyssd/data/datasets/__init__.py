@@ -6,7 +6,7 @@ from pyssd.data.datasets.coco import COCODetection
 from pyssd.data.datasets.mnist import MultiScaleMNIST
 
 datasets: Dict[str, Type[BaseDataset]] = {
-    "MultiscaleMNIST": MultiScaleMNIST,
+    "MNIST": MultiScaleMNIST,
     "COCO": COCODetection,
     "CLEVR": CLEVR,
 }

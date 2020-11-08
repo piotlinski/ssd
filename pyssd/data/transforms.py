@@ -16,7 +16,6 @@ from albumentations import (
     normalize_bboxes,
 )
 from albumentations.pytorch import ToTensorV2 as ToTensor
-from yacs.config import CfgNode
 
 from pyssd.data.bboxes import (
     assign_priors,
@@ -24,28 +23,27 @@ from pyssd.data.bboxes import (
     convert_boxes_to_locations,
     corner_bbox_to_center_bbox,
 )
-from pyssd.data.priors import process_prior
 
 
 class SSDTargetTransform:
     """Transforms for SSD target."""
 
-    def __init__(self, config: CfgNode):
-        self.center_form_priors = process_prior(
-            image_size=config.DATA.SHAPE,
-            feature_maps=config.DATA.PRIOR.FEATURE_MAPS,
-            min_sizes=config.DATA.PRIOR.MIN_SIZES,
-            max_sizes=config.DATA.PRIOR.MAX_SIZES,
-            strides=config.DATA.PRIOR.STRIDES,
-            aspect_ratios=config.DATA.PRIOR.ASPECT_RATIOS,
-            clip=config.DATA.PRIOR.CLIP,
-        )
+    def __init__(
+        self,
+        anchors: torch.Tensor,
+        image_size: Tuple[int, int],
+        n_classes: int,
+        center_variance: float,
+        size_variance: float,
+        iou_threshold: float,
+    ):
+        self.center_form_priors = anchors
         self.corner_form_priors = center_bbox_to_corner_bbox(self.center_form_priors)
-        self.center_variance = config.MODEL.CENTER_VARIANCE
-        self.size_variance = config.MODEL.SIZE_VARIANCE
-        self.iou_threshold = config.MODEL.IOU_THRESHOLD
-        self.image_shape = config.DATA.SHAPE
-        self.single_class = config.DATA.N_CLASSES == 2
+        self.center_variance = center_variance
+        self.size_variance = size_variance
+        self.iou_threshold = iou_threshold
+        self.image_shape = image_size
+        self.single_class = n_classes == 2
 
     def __call__(
         self,
@@ -78,16 +76,26 @@ class DataTransform:
     """Base class for image transforms using albumentations."""
 
     def __init__(
-        self, config: CfgNode, transforms: Optional[List[BasicTransform]] = None
+        self,
+        image_size: Tuple[int, int],
+        pixel_mean: Tuple[float, ...],
+        pixel_std: Tuple[float, ...],
+        transforms: Optional[List[BasicTransform]] = None,
     ):
+        """
+        :param image_size: model input data shape (eg. (300, 300))
+        :param pixel_mean: data pixel mean per channel
+        :param pixel_std: data pixel std per channel
+        :param transforms: initial transforms
+        """
         if transforms is None:
             transforms = []
         self.transforms = transforms
         default_transforms = [
-            Resize(*config.DATA.SHAPE),
+            Resize(*image_size),
             Normalize(
-                mean=config.DATA.PIXEL_MEAN,
-                std=config.DATA.PIXEL_STD,
+                mean=pixel_mean,
+                std=pixel_std,
                 max_pixel_value=1.0,
             ),
             ToTensor(),
@@ -124,9 +132,23 @@ class DataTransform:
 class TrainDataTransform(DataTransform):
     """Transforms images and labels for training SSD."""
 
-    def __init__(self, config: CfgNode, flip: bool = False):
+    def __init__(
+        self,
+        image_size: Tuple[int, int],
+        pixel_mean: Tuple[float, ...],
+        pixel_std: Tuple[float, ...],
+        flip: bool = False,
+        augment_colors: bool = False,
+    ):
+        """
+        :param image_size: model input data shape (eg. (300, 300))
+        :param pixel_mean: data pixel mean per channel
+        :param pixel_std: data pixel std per channel
+        :param flip: randomly flip image L/R
+        :param augment_colors: augment image colors
+        """
         transforms = []
-        if config.DATA.AUGMENT_COLORS:
+        if augment_colors:
             # noinspection PyTypeChecker
             color_transforms = [
                 HueSaturationValue(
@@ -140,4 +162,9 @@ class TrainDataTransform(DataTransform):
             RandomSizedBBoxSafeCrop(512, 512),
         ]
         transforms.extend(shape_transforms)
-        super().__init__(config, transforms)
+        super().__init__(
+            image_size=image_size,
+            pixel_mean=pixel_mean,
+            pixel_std=pixel_std,
+            transforms=transforms,
+        )

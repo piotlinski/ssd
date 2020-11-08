@@ -1,14 +1,14 @@
 """VGG backbone for SSD."""
-from typing import Optional, Tuple
+from abc import ABC
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as functional
 from torch.nn import init
 from torchvision.models.vgg import vgg11, vgg11_bn, vgg16, vgg16_bn
-from yacs.config import CfgNode
 
 from pyssd.modeling.backbones.base import BaseBackbone
-from pyssd.modeling.checkpoint import cache_url
 
 
 class L2Norm(nn.Module):
@@ -34,22 +34,23 @@ class L2Norm(nn.Module):
         return self.weight.unsqueeze(0).unsqueeze(2).unsqueeze(3).expand_as(x) * x
 
 
-class VGG11(BaseBackbone):
-    """VGG11 light backbone. Allows 300x300 input."""
+class VGGLite(BaseBackbone):
+    """VGG11 light backbone."""
 
-    def __init__(self, config: CfgNode):
-        super().__init__(config=config, out_channels=[512, 512, 512, 256, 256])
+    def __init__(self, use_pretrained: bool):
+        self.out_channels = [512, 512, 512, 256, 256]
+        self.feature_maps = [18, 9, 5, 3, 1]
+        self.min_sizes = [32, 80, 153, 207, 261]
+        self.max_sizes = [80, 153, 207, 261, 315]
+        self.strides = [16, 32, 64, 100, 300]
+        self.aspect_ratios = [(), (), (), (), ()]
+        super().__init__(
+            use_pretrained=use_pretrained,
+        )
 
     def _build_backbone(self) -> nn.Module:
         """Build VGG11 backbone."""
-        torchvision_pretrained = (
-            self.config.MODEL.USE_PRETRAINED and not self.config.MODEL.PRETRAINED_URL
-        )
-        if self.config.MODEL.BATCH_NORM:
-            backbone = vgg11_bn(pretrained=torchvision_pretrained).features
-        else:
-            backbone = vgg11(pretrained=torchvision_pretrained).features
-        return backbone
+        return vgg11(pretrained=self.use_pretrained).features
 
     def _build_extras(self) -> nn.Module:
         """Build VGG11 300x300 extras."""
@@ -85,36 +86,54 @@ class VGG11(BaseBackbone):
         features.append(x)  # vgg output
 
         for idx, layer in enumerate(self.extras):
-            x = nn.functional.relu(layer(x), inplace=True)
+            x = functional.relu(layer(x), inplace=True)
             if idx % 2 == 1:
                 features.append(x)  # each SSD feature
 
         return tuple(features)
 
 
-class VGG16(BaseBackbone):
-    """VGG16 backbone. Allows 300x300 or 512x512 input."""
+class VGGLiteBN(VGGLite):
+    """Batch Norm version of VGGLite."""
 
-    def __init__(self, config: CfgNode):
-        if config.DATA.SHAPE == (300, 300):
-            out_channels = [512, 1024, 512, 256, 256, 256]
-        elif config.DATA.SHAPE == (512, 512):
-            out_channels = [512, 1024, 512, 256, 256, 256, 256]
-        else:
-            raise ValueError("Data shape must be either 300x300 or 512x512.")
-        super().__init__(config=config, out_channels=out_channels)
+    def _build_backbone(self) -> nn.Module:
+        """Build VGG11_BN backbone."""
+        return vgg11_bn(pretrained=self.use_pretrained).features
+
+
+class VGG16(BaseBackbone, ABC):
+    """VGG16 backbone."""
+
+    def __init__(
+        self,
+        out_channels: List[int],
+        feature_maps: List[int],
+        min_sizes: List[float],
+        max_sizes: List[float],
+        strides: List[int],
+        aspect_ratios: List[Tuple[int, ...]],
+        use_pretrained: bool,
+        batch_norm: bool,
+    ):
+        self.batch_norm = batch_norm
+        self.out_channels = out_channels
+        self.feature_maps = feature_maps
+        self.min_sizes = min_sizes
+        self.max_sizes = max_sizes
+        self.strides = strides
+        self.aspect_ratios = aspect_ratios
+        super().__init__(
+            use_pretrained=use_pretrained,
+        )
         self.l2_norm = L2Norm(n_channels=512, scale=20)
 
     def _build_backbone(self) -> nn.Module:
         """Build VGG16 backbone."""
-        torchvision_pretrained = (
-            self.config.MODEL.USE_PRETRAINED and not self.config.MODEL.PRETRAINED_URL
-        )
-        if self.config.MODEL.BATCH_NORM:
-            backbone = vgg16_bn(pretrained=torchvision_pretrained).features[:-1]
+        if self.batch_norm:
+            backbone = vgg16_bn(pretrained=self.use_pretrained).features[:-1]
             backbone[23].ceil_mode = True
         else:
-            backbone = vgg16(pretrained=torchvision_pretrained).features[:-1]
+            backbone = vgg16(pretrained=self.use_pretrained).features[:-1]
             backbone[16].ceil_mode = True
         start_id = len(backbone)
         backbone.add_module(
@@ -132,73 +151,11 @@ class VGG16(BaseBackbone):
             nn.Conv2d(in_channels=1024, out_channels=1024, kernel_size=1),
         )
         backbone.add_module(f"{start_id + 4}", nn.ReLU(inplace=True))
-        if self.config.MODEL.USE_PRETRAINED and self.config.MODEL.PRETRAINED_URL:
-            cached_file = cache_url(
-                self.config.MODEL.PRETRAINED_URL,
-                f"{self.config.ASSETS_DIR}/{self.config.MODEL.PRETRAINED_DIR}",
-            )
-            state_dict = torch.load(cached_file, map_location="cpu")
-            backbone.load_state_dict(state_dict)
-        else:
-            for module in backbone[start_id:]:
-                if isinstance(module, nn.Conv2d):
-                    nn.init.xavier_uniform_(module.weight)
-                    nn.init.zeros_(module.bias)
+        for module in backbone[start_id:]:
+            if isinstance(module, nn.Conv2d):
+                nn.init.xavier_uniform_(module.weight)
+                nn.init.zeros_(module.bias)
         return backbone
-
-    def _build_extras(self) -> nn.Module:
-        """Build extras for 300x300 input."""
-        layers = [
-            nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
-            nn.Conv2d(
-                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
-            ),
-            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
-            nn.Conv2d(
-                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
-            ),
-            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
-        ]
-        if self.config.DATA.SHAPE == (300, 300):
-            layers.extend(
-                [
-                    nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
-                    nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
-                    nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
-                ]
-            )
-        elif self.config.DATA.SHAPE == (512, 512):
-            layers.extend(
-                [
-                    nn.Conv2d(
-                        in_channels=128,
-                        out_channels=256,
-                        kernel_size=3,
-                        stride=2,
-                        padding=1,
-                    ),
-                    nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
-                    nn.Conv2d(
-                        in_channels=128,
-                        out_channels=256,
-                        kernel_size=3,
-                        stride=2,
-                        padding=1,
-                    ),
-                    nn.Conv2d(
-                        in_channels=256, out_channels=128, kernel_size=1, stride=1
-                    ),
-                    nn.Conv2d(
-                        in_channels=128,
-                        out_channels=256,
-                        kernel_size=4,
-                        stride=1,
-                        padding=1,
-                    ),
-                ]
-            )
-        extras = nn.ModuleList(layers)
-        return extras
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Run data through VGG16 backbone."""
@@ -222,3 +179,93 @@ class VGG16(BaseBackbone):
                 features.append(x)  # each SSD feature
 
         return tuple(features)
+
+
+class VGG300(VGG16):
+    """VGG16 backbone for 300x300 input."""
+
+    def __init__(self, use_pretrained: bool, batch_norm: bool = False):
+        super().__init__(
+            batch_norm=batch_norm,
+            out_channels=[512, 1024, 512, 256, 256, 256],
+            feature_maps=[38, 19, 10, 5, 3, 1],
+            min_sizes=[21, 45, 99, 153, 207, 261],
+            max_sizes=[45, 99, 153, 207, 261, 315],
+            strides=[8, 16, 32, 64, 100, 300],
+            aspect_ratios=[(2,), (2, 3), (2, 3), (2, 3), (2,), (2,)],
+            use_pretrained=use_pretrained,
+        )
+
+    def _build_extras(self) -> nn.Module:
+        """Build extras for 300x300 input."""
+        extras = [
+            nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
+            nn.Conv2d(
+                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3),
+        ]
+        return nn.ModuleList(extras)
+
+
+class VGG300BN(VGG300):
+    """Batch Norm version of VGG300."""
+
+    def __init__(self, use_pretrained: bool):
+        super().__init__(use_pretrained=use_pretrained, batch_norm=True)
+
+
+class VGG512(VGG16):
+    """VGG16 backbone for 512x512 input."""
+
+    def __init__(self, use_pretrained: bool, batch_norm: bool = False):
+        super().__init__(
+            batch_norm=batch_norm,
+            out_channels=[512, 1024, 512, 256, 256, 256, 256],
+            feature_maps=[64, 32, 16, 8, 4, 2, 1],
+            min_sizes=[20.48, 51.2, 133.12, 215.04, 296.96, 378.88, 460.8],
+            max_sizes=[51.2, 133.12, 215.04, 296.96, 378.88, 460.8, 542.72],
+            strides=[8, 16, 32, 64, 128, 256, 512],
+            aspect_ratios=[(2,), (2, 3), (2, 3), (2, 3), (2, 3), (2,), (2,)],
+            use_pretrained=use_pretrained,
+        )
+
+    def _build_extras(self) -> nn.Module:
+        """Build extras for 300x300 input."""
+        extras = [
+            nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
+            nn.Conv2d(
+                in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1
+            ),
+            nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1, stride=1),
+            nn.Conv2d(
+                in_channels=128, out_channels=256, kernel_size=4, stride=1, padding=1
+            ),
+        ]
+        return nn.ModuleList(extras)
+
+
+class VGG512BN(VGG512):
+    """Batch Norm version of VGG512."""
+
+    def __init__(self, use_pretrained: bool):
+        super().__init__(use_pretrained=use_pretrained, batch_norm=True)

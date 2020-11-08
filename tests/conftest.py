@@ -1,43 +1,30 @@
+from unittest.mock import patch
+
 import pytest
 import torch
-from yacs.config import CfgNode
-
-from pyssd.config import _C as cfg
 
 
 @pytest.fixture
-def sample_config() -> CfgNode:
-    """Return sample config with default values."""
-    config = cfg.clone()
-    config.MODEL.USE_PRETRAINED = False
-    config.MODEL.PRETRAINED_URL = ""
-    config.MODEL.CONFIDENCE_THRESHOLD = 0.0
-    config.MODEL.MAX_PER_IMAGE = 10
-    config.RUNNER.DEVICE = "cpu"
-    config.RUNNER.NUM_WORKERS = 1
-    config.RUNNER.EPOCHS = 1
-    config.RUNNER.BATCH_SIZE = 2
-    config.RUNNER.USE_TENSORBOARD = False
-    config.DATA.DATASET = "MultiscaleMNIST"
-    return config
-
-
-@pytest.fixture
-def sample_image(sample_config):
+def sample_image():
     """Sample torch image of correct shape."""
-    return torch.zeros((3, *sample_config.DATA.SHAPE))
+    return torch.zeros((3, 300, 300))
 
 
 @pytest.fixture
-def sample_prediction(sample_config):
-    """Sample cls_logits and bbox_pred for given config."""
-    dim = sum(
-        [
-            features ** 2 * boxes
-            for features, boxes in zip(
-                sample_config.DATA.PRIOR.FEATURE_MAPS,
-                sample_config.DATA.PRIOR.BOXES_PER_LOC,
-            )
-        ]
-    )
-    return torch.zeros((1, dim, sample_config.DATA.N_CLASSES)), torch.zeros((1, dim, 4))
+@patch("pyssd.data.datasets.mnist.h5py.File")
+def ssd_params(_file_mock):
+    """Create kwargs for SSD."""
+    return {"dataset_name": "MNIST", "data_dir": "test"}
+
+
+@pytest.fixture
+def prior_data():
+    """Prepare sample prior data."""
+    return {
+        "image_size": (300, 300),
+        "feature_maps": (4, 2),
+        "min_sizes": (2, 1),
+        "max_sizes": (3, 2),
+        "strides": (2, 1),
+        "aspect_ratios": ((2, 3), (2,)),
+    }
