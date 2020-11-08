@@ -35,7 +35,7 @@ max-line-length = 88
 extend-ignore = ["E203", "E231"]
 
 [tool.pytest.ini_options]
-addopts = "--color=yes"
+addopts = "--color=yes --ignore=data"
 
 [tool.isort]
 line_length = 88
