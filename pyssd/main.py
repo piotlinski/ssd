@@ -1,29 +1,23 @@
 """Main function for SSD training."""
-import argparse
 from argparse import ArgumentParser
 
-import yaml
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from pyssd.modeling.model import SSD
 
 
-class LoadFromYaml(argparse.Action):
-    """Load arguments from YAML file."""
-
-    def __call__(self, parser: ArgumentParser, namespace, values, option_string=None):
-        with values as fp:
-            for key, value in yaml.load(fp, Loader=yaml.Loader).items():
-                setattr(namespace, key, value)
-
-
 def main(hparams):
     """Main function that creates and trains SSD model."""
-    hparams_dict = vars(hparams)
-    model = SSD(**hparams_dict)
+    if hparams.checkpoint is not None:
+        model = SSD.load_from_checkpoint(
+            checkpoint_path=hparams.checkpoint, hparams_file=hparams.hparams_file
+        )
+    else:
+        model = SSD(**vars(hparams))
     checkpoint_callback = ModelCheckpoint(
         monitor="val_loss",
+        filename="ckpt-{epoch:02d}-{val_loss:.2f}",
         save_top_k=hparams.n_checkpoints,
         mode="min",
     )
@@ -36,11 +30,17 @@ def cli():
     """SSD CLI with argparse."""
     parser = ArgumentParser()
     parser.add_argument(
-        "-f",
-        "--file",
-        type=open,
-        action=LoadFromYaml,
-        help="YAML file with arguments to use",
+        "-c",
+        "--checkpoint",
+        type=str,
+        default=None,
+        help="Checkpoint to start training from",
+    )
+    parser.add_argument(
+        "--hparams-file",
+        type=str,
+        default=None,
+        help="Hparams file to load hyperparameters from",
     )
     parser = SSD.add_model_specific_args(parser)
     parser.add_argument(
