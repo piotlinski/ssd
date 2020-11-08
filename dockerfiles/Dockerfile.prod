@@ -40,7 +40,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYSETUP_PATH="/opt/pysetup" \
     VENV_PATH="/opt/pysetup/.venv" \
     MPLCONFIGDIR="/tmp/mpl" \
-    TORCH_HOME="/app/assets/pretrained"
+    TORCH_HOME="/app/pretrained"
 
 COPY --from=builder $PYSETUP_PATH/dist/*.whl /tmp/dist/
 RUN pip install /tmp/dist/*.whl

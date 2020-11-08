@@ -21,6 +21,6 @@ test: ## Run tests
 	poetry run pytest $(args)
 
 gpu ?= 3
-ssd_args ?= ssd --config-file config.yml train
+ssd_args ?= ssd --help
 run: ## Run model
 	$(DOCKER_RUN) --gpus '"device=$(gpu)"' --shm-size 24G $(tag) $(ssd_args)
