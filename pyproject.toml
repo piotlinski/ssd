@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyssd"
-version = "1.4.0"
+version = "2.0.0"
 description = "Single Shot Multi-Box Detector implementation in PyTorch"
 authors = ["PiotrJZielinski <piotrekzie100@gmail.com>"]
 packages = [
@@ -35,7 +35,7 @@ max-line-length = 88
 extend-ignore = ["E203", "E231"]
 
 [tool.pytest.ini_options]
-addopts = "--color=yes"
+addopts = "--color=yes --ignore=data"
 
 [tool.isort]
 line_length = 88
