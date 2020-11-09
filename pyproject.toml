@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyssd"
-version = "2.1.0"
+version = "2.1.1"
 description = "Single Shot Multi-Box Detector implementation in PyTorch"
 authors = ["PiotrJZielinski <piotrekzie100@gmail.com>"]
 packages = [

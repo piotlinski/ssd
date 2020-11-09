@@ -509,7 +509,7 @@ class SSD(pl.LightningModule):
                 1.0, float(self.trainer.global_step + 1) / self.lr_warmup_steps
             )
             for pg in optimizer.param_groups:
-                pg["lr"] = lr_scale * self.hparams.learning_rate
+                pg["lr"] = lr_scale * self.learning_rate
 
         super().optimizer_step(optimizer=optimizer, *args, **kwargs)
 
