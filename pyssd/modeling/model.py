@@ -6,11 +6,11 @@ from typing import Iterable, List, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as functional
-import wandb
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
 
+import wandb
 from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
 from pyssd.data.datasets import datasets, onehot_labels
 from pyssd.data.priors import process_prior
@@ -33,6 +33,7 @@ class SSD(pl.LightningModule):
         learning_rate: float = 1e-3,
         lr_reduce_patience: int = 10,
         lr_warmup_steps: int = 500,
+        auto_lr_find: bool = False,
         batch_size: int = 32,
         num_workers: int = 8,
         pin_memory: bool = True,
@@ -61,6 +62,7 @@ class SSD(pl.LightningModule):
         :param learning_rate: learning rate
         :param lr_reduce_patience: learning rate reduce on plateau patience (epochs)
         :param lr_warmup_steps: number of steps with warmup
+        :param auto_lr_find: perform auto lr finding
         :param batch_size: mini-batch size for training
         :param num_workers: number of workers for dataloader
         :param pin_memory: pin memory for training
@@ -128,6 +130,7 @@ class SSD(pl.LightningModule):
         self.lr = learning_rate
         self.lr_reduce_patience = lr_reduce_patience
         self.lr_warmup_steps = lr_warmup_steps
+        self.auto_lr_find = auto_lr_find
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.pin_memory = pin_memory
@@ -499,7 +502,9 @@ class SSD(pl.LightningModule):
 
     def optimizer_step(self, optimizer, *args, **kwargs):
         """Perform optimizer step with warmup."""
-        if self.trainer.global_step < self.lr_warmup_steps:
+        if self.trainer.global_step < self.lr_warmup_steps and (
+            (not self.auto_lr_find) or (self.auto_lr_find and self.current_epoch > 0)
+        ):
             lr_scale = min(
                 1.0, float(self.trainer.global_step + 1) / self.lr_warmup_steps
             )
