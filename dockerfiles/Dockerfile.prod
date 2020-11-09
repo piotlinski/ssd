@@ -29,6 +29,8 @@ RUN poetry build -f wheel
 # --- PROD IMAGE ---
 FROM piotrekzie100/pytorch:1.7.0-py38-cuda10.2
 
+ARG WANDB_API_KEY
+
 RUN apt-get update \
     && apt-get install --no-install-recommends -y libgl1-mesa-glx ffmpeg libsm6 libxext6
 
@@ -40,7 +42,8 @@ ENV PYTHONUNBUFFERED=1 \
     PYSETUP_PATH="/opt/pysetup" \
     VENV_PATH="/opt/pysetup/.venv" \
     MPLCONFIGDIR="/tmp/mpl" \
-    TORCH_HOME="/app/assets/pretrained"
+    TORCH_HOME="/app/pretrained" \
+    WANDB_API_KEY=$(WANDB_API_KEY)
 
 COPY --from=builder $PYSETUP_PATH/dist/*.whl /tmp/dist/
 RUN pip install /tmp/dist/*.whl

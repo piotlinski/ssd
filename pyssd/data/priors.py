@@ -1,7 +1,7 @@
 """SSD data priors utils."""
 from itertools import product
 from math import sqrt
-from typing import Iterable, Tuple
+from typing import Iterable, List, Tuple
 
 import torch
 
@@ -34,7 +34,7 @@ def square_box(box_size: float, image_size: Tuple[float, float]) -> Tuple[float,
 
 
 def rect_box(
-    box_size: int, image_size: Tuple[float, float], ratio: float
+    box_size: float, image_size: Tuple[float, float], ratio: float
 ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
     """Calculate rectangular box shapes.
 
@@ -54,8 +54,8 @@ def rect_box(
 def prior_boxes(
     image_size: Tuple[int, int],
     indices: Tuple[int, int],
-    small_size: int,
-    big_size: int,
+    small_size: float,
+    big_size: float,
     stride: int,
     rect_ratios: Tuple[int, ...],
 ) -> Iterable[Tuple[float, float, float, float]]:
@@ -88,8 +88,8 @@ def prior_boxes(
 def feature_map_prior_boxes(
     image_size: Tuple[int, int],
     feature_map: int,
-    small_size: int,
-    big_size: int,
+    small_size: float,
+    big_size: float,
     stride: int,
     rect_ratios: Tuple[int, ...],
 ) -> Iterable[Tuple[float, float, float, float]]:
@@ -117,11 +117,11 @@ def feature_map_prior_boxes(
 
 def all_prior_boxes(
     image_size: Tuple[int, int],
-    feature_maps: Tuple[int, ...],
-    min_sizes: Tuple[int, ...],
-    max_sizes: Tuple[int, ...],
-    strides: Tuple[int, ...],
-    aspect_ratios: Tuple[Tuple[int, ...], ...],
+    feature_maps: List[int],
+    min_sizes: List[float],
+    max_sizes: List[float],
+    strides: List[int],
+    aspect_ratios: List[Tuple[int, ...]],
 ) -> Iterable[Tuple[float, float, float, float]]:
     """Get prior boxes for all feature maps.
 
@@ -149,13 +149,12 @@ def all_prior_boxes(
 
 def process_prior(
     image_size: Tuple[int, int],
-    feature_maps: Tuple[int, ...],
-    min_sizes: Tuple[int, ...],
-    max_sizes: Tuple[int, ...],
-    strides: Tuple[int, ...],
-    aspect_ratios: Tuple[Tuple[int, ...], ...],
-    clip: bool,
-):
+    feature_maps: List[int],
+    min_sizes: List[float],
+    max_sizes: List[float],
+    strides: List[int],
+    aspect_ratios: List[Tuple[int, ...]],
+) -> torch.Tensor:
     """Generate SSD Prior Boxes (center, height and width of the priors)
 
     :param image_size: size of the input image
@@ -165,7 +164,6 @@ def process_prior(
     :param strides: strides for each feature map
     :param aspect_ratios: available aspect ratios per location
         (n_boxes = 2 + ratio * 2)
-    :param clip: clip params to [0, 1]
     :return: (n_priors, 4) prior boxes, relative to the image size
     """
     priors = all_prior_boxes(
@@ -176,7 +174,5 @@ def process_prior(
         strides=strides,
         aspect_ratios=aspect_ratios,
     )
-    priors_tensor = torch.tensor(data=list(priors))
-    if clip:
-        priors_tensor.clamp_(min=0, max=1)
+    priors_tensor = torch.tensor(data=list(priors)).clamp(min=0, max=1)
     return priors_tensor

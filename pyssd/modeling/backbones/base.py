@@ -1,23 +1,35 @@
 """Base class for SSD backbone."""
+from abc import ABC
 from typing import List, Tuple
 
 import torch
 import torch.nn as nn
-from yacs.config import CfgNode
 
 
-class BaseBackbone(nn.Module):
-    def __init__(self, config: CfgNode, out_channels: List[int]):
+class BaseBackbone(nn.Module, ABC):
+    def __init__(self, use_pretrained: bool):
         """
-        :param config: SSD config
-        :param out_channels: output channels of the backbone
+        :param use_pretrained: use pretrained backbone
         """
         super().__init__()
-        self.config = config
+
+        self.out_channels: List[int]
+        self.feature_maps: List[int]
+        self.min_sizes: List[float]
+        self.max_sizes: List[float]
+        self.strides: List[int]
+        self.aspect_ratios: List[Tuple[int, ...]]
+        self.use_pretrained = use_pretrained
+
         self.backbone = self._build_backbone()
         self.extras = self._build_extras()
-        self.out_channels = out_channels
         self.init_extras()
+
+    @property
+    def boxes_per_loc(self) -> List[int]:
+        return [
+            2 + 2 * len(aspect_ratio_tuple) for aspect_ratio_tuple in self.aspect_ratios
+        ]
 
     def init_extras(self):
         """Initialize model params."""
