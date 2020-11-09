@@ -32,7 +32,7 @@ FROM piotrekzie100/pytorch:1.7.0-py38-cuda10.2
 ARG WANDB_API_KEY
 
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y libgl1-mesa-glx ffmpeg libsm6 libxext6
+    && apt-get install --no-install-recommends -y gosu libgl1-mesa-glx ffmpeg libsm6 libxext6
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -43,9 +43,14 @@ ENV PYTHONUNBUFFERED=1 \
     VENV_PATH="/opt/pysetup/.venv" \
     MPLCONFIGDIR="/tmp/mpl" \
     TORCH_HOME="/app/pretrained" \
-    WANDB_API_KEY=$(WANDB_API_KEY)
+    WANDB_API_KEY=${WANDB_API_KEY}
 
 COPY --from=builder $PYSETUP_PATH/dist/*.whl /tmp/dist/
 RUN pip install /tmp/dist/*.whl
 RUN rm -rf /tmp/dist
+
+COPY dockerfiles/entrypoint.sh /usr/local/bin/
+RUN ln -s /usr/local/bin/entrypoint.sh /
+ENTRYPOINT ["entrypoint.sh"]
+
 WORKDIR /app

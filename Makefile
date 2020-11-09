@@ -1,4 +1,5 @@
-DOCKER_RUN := docker run -u `id -u $(USER)`:`id -g $(USER)` --rm -v $(shell pwd):/app
+DOCKER_RUN := docker run --rm -v $(shell pwd):/app
+LOCAL_USER := -e LOCAL_USER_ID=`id -u $(USER)` -e LOCAL_GROUP_ID=`id -g $(USER)`
 tag = piotrekzie100/dev:ssd
 
 help: ## Show this help
@@ -24,4 +25,4 @@ test: ## Run tests
 gpu ?= 3
 ssd_args ?= ssd --default_root_dir runs
 run: ## Run model
-	$(DOCKER_RUN) --gpus '"device=$(gpu)"' --shm-size 24G $(tag) $(ssd_args)
+	$(DOCKER_RUN) $(LOCAL_USER) --gpus '"device=$(gpu)"' --shm-size 24G $(tag) $(ssd_args)

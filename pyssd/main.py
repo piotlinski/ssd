@@ -2,7 +2,11 @@
 from argparse import ArgumentParser
 
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import (
+    EarlyStopping,
+    LearningRateMonitor,
+    ModelCheckpoint,
+)
 from pytorch_lightning.loggers import WandbLogger
 
 from pyssd.modeling.model import SSD
@@ -33,7 +37,13 @@ def main(hparams):
     )
     logger.watch(model, log=hparams.watch, log_freq=hparams.watch_freq)
     trainer = Trainer.from_argparse_args(
-        hparams, logger=logger, callbacks=[checkpoint_callback]
+        hparams,
+        logger=logger,
+        callbacks=[
+            checkpoint_callback,
+            EarlyStopping(monitor="val_loss"),
+            LearningRateMonitor(logging_interval="step"),
+        ],
     )
     trainer.tune(model)
     trainer.fit(model)
