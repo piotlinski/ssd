@@ -6,11 +6,11 @@ from typing import Iterable, List, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as functional
+import wandb
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
 
-import wandb
 from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
 from pyssd.data.datasets import datasets, onehot_labels
 from pyssd.data.priors import process_prior
