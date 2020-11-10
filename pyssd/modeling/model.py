@@ -45,7 +45,7 @@ class SSD(pl.LightningModule):
         predictor_name: str = "SSD",
         image_size: Tuple[int, int] = (300, 300),
         pixel_mean: Tuple[float, ...] = (0.0, 0.0, 0.0),
-        pixel_std: Tuple[float, ...] = (0.0, 0.0, 0.0),
+        pixel_std: Tuple[float, ...] = (1.0, 1.0, 1.0),
         center_variance: float = 0.1,
         size_variance: float = 0.2,
         iou_threshold: float = 0.5,
@@ -166,6 +166,12 @@ class SSD(pl.LightningModule):
             default=10,
             help="Number of epochs with no improvement in validation loss "
             "required to reduce the learning rate",
+        )
+        parser.add_argument(
+            "--lr-warmup-steps",
+            type=int,
+            default=500,
+            help="Number of steps taken with lower lr before starting training",
         )
         parser.add_argument(
             "--batch-size",
