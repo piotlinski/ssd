@@ -6,11 +6,11 @@ from typing import Iterable, List, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as functional
-import wandb
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
 
+import wandb
 from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
 from pyssd.data.datasets import datasets, onehot_labels
 from pyssd.data.priors import process_prior
@@ -18,6 +18,7 @@ from pyssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTr
 from pyssd.modeling.backbones import backbones
 from pyssd.modeling.box_predictors import box_predictors
 from pyssd.modeling.loss import MultiBoxLoss
+from pyssd.modeling.metrics import MeanAveragePrecision
 from pyssd.modeling.visualize import get_boxes
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,8 @@ class SSD(pl.LightningModule):
         nms_threshold: float = 0.45,
         max_per_image: int = 100,
         negative_positive_ratio: float = 3,
+        calculate_map: bool = True,
+        map_iou_threshold: float = 0.5,
         visualize: bool = True,
         **_kwargs,
     ):
@@ -84,6 +87,8 @@ class SSD(pl.LightningModule):
         :param max_per_image: max number of detections per image
         :param negative_positive_ratio: the ratio between the negative examples and
             positive examples for calculating loss
+        :param calculate_map: calculate mean average precision during training
+        :param map_iou_threshold: mean average precision iou threshold
         """
         super().__init__()
         self.dataset = datasets[dataset_name]
@@ -137,7 +142,11 @@ class SSD(pl.LightningModule):
         self.n_classes = n_classes
         self.flip_train = flip_train
         self.augment_colors_train = augment_colors_train
+        self.calculate_map = calculate_map
+        self.map_iou_threshold = map_iou_threshold
         self.visualize = visualize
+
+        self.map = MeanAveragePrecision(iou_threshold=self.map_iou_threshold)
 
         self.save_hyperparameters()
 
@@ -295,6 +304,23 @@ class SSD(pl.LightningModule):
             action="store_false",
         )
         parser.add_argument(
+            "--calculate-map",
+            default=True,
+            action="store_true",
+            help="Calculate Mean Average Precision during training",
+        )
+        parser.add_argument(
+            "--no-calculate-map",
+            dest="calculate_map",
+            action="store_false",
+        )
+        parser.add_argument(
+            "--map-iou-threshold",
+            type=float,
+            default=0.5,
+            help="Mean Average Precision metric Intersection over Union threshold",
+        )
+        parser.add_argument(
             "--visualize",
             default=True,
             action="store_true",
@@ -444,41 +470,56 @@ class SSD(pl.LightningModule):
             logger=True,
         )
 
-        if batch_nb == 0 and self.visualize:  # perform at the beginning of each epoch
-            image = images[0].detach().permute(1, 2, 0)
-            denominator = torch.reciprocal(
-                torch.tensor(self.pixel_std, device=self.device)
-            )
-            image = image / denominator + torch.tensor(
-                self.pixel_mean, device=self.device
-            )
-            image.clamp_(min=0, max=1)
+        if batch_nb == 0:  # perform at the beginning of each epoch
+            if self.calculate_map:
+                predictions = self.process_model_prediction(
+                    cls_logits.detach(), bbox_pred.detach()
+                )
+                ground_truth = self.process_model_prediction(
+                    labels.detach(), locations.detach()
+                )
+                self.logger.experiment.log(
+                    {f"{stage}_map": self.map(predictions, ground_truth)},
+                    step=self.global_step,
+                )
 
-            ((gt_boxes, gt_scores, gt_labels),) = self.process_model_prediction(
-                labels[0].detach().unsqueeze(0),
-                locations[0].detach().unsqueeze(0),
-                confidence_threshold=0.0,
-            )
-            ((boxes, scores, labels),) = self.process_model_prediction(
-                cls_logits[0].detach().unsqueeze(0),
-                bbox_pred[0].detach().unsqueeze(0),
-                confidence_threshold=0.0,
-            )
-            log_boxes = get_boxes(
-                gt_boxes=gt_boxes.cpu(),
-                gt_scores=gt_scores.cpu(),
-                gt_labels=gt_labels.cpu(),
-                boxes=boxes.cpu(),
-                scores=scores.cpu(),
-                labels=labels.cpu(),
-                class_labels=self.class_labels,
-            )
-            log_image = wandb.Image(
-                image.cpu().numpy(),
-                boxes=log_boxes,
-                caption="object detection predictions",
-            )
-            self.logger.experiment.log({f"{stage}_predictions": log_image})
+            if self.visualize:
+                image = images[0].detach().permute(1, 2, 0)
+                denominator = torch.reciprocal(
+                    torch.tensor(self.pixel_std, device=self.device)
+                )
+                image = image / denominator + torch.tensor(
+                    self.pixel_mean, device=self.device
+                )
+                image.clamp_(min=0, max=1)
+
+                ((gt_boxes, gt_scores, gt_labels),) = self.process_model_prediction(
+                    labels[0].detach().unsqueeze(0),
+                    locations[0].detach().unsqueeze(0),
+                    confidence_threshold=0.0,
+                )
+                ((boxes, scores, labels),) = self.process_model_prediction(
+                    cls_logits[0].detach().unsqueeze(0),
+                    bbox_pred[0].detach().unsqueeze(0),
+                    confidence_threshold=0.0,
+                )
+                log_boxes = get_boxes(
+                    gt_boxes=gt_boxes.cpu(),
+                    gt_scores=gt_scores.cpu(),
+                    gt_labels=gt_labels.cpu(),
+                    boxes=boxes.cpu(),
+                    scores=scores.cpu(),
+                    labels=labels.cpu(),
+                    class_labels=self.class_labels,
+                )
+                log_image = wandb.Image(
+                    image.cpu().numpy(),
+                    boxes=log_boxes,
+                    caption="object detection predictions",
+                )
+                self.logger.experiment.log(
+                    {f"{stage}_predictions": log_image}, step=self.global_step
+                )
 
         return loss
 
