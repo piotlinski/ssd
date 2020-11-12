@@ -11,7 +11,7 @@ from pyssd.data.datasets.base import BaseDataset, DataTransformType, TargetTrans
 class MultiScaleMNIST(BaseDataset):
     """Multi-scale MNIST dataset."""
 
-    CLASS_LABELS = ["0", "1", "2", "3", "4", "5", "6", "7", "8" "9", "10"]
+    CLASS_LABELS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
     OBJECT_LABEL = "digit"
 
     def __init__(
