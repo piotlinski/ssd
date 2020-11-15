@@ -5,7 +5,11 @@ import h5py
 import numpy as np
 import torch
 
-from pyssd.data.datasets.base import BaseDataset, DataTransformType, TargetTransformType
+from pytorch_ssd.data.datasets.base import (
+    BaseDataset,
+    DataTransformType,
+    TargetTransformType,
+)
 
 
 class MultiScaleMNIST(BaseDataset):

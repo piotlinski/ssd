@@ -2,7 +2,7 @@
 import pytest
 import torch
 
-from pyssd.modeling.model import SSD
+from pytorch_ssd.modeling.model import SSD
 
 
 def test_model_setup(ssd_params):

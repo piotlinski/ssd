@@ -11,7 +11,7 @@ def sample_image():
 
 
 @pytest.fixture
-@patch("pyssd.data.datasets.mnist.h5py.File")
+@patch("pytorch_ssd.data.datasets.mnist.h5py.File")
 def ssd_params(_file_mock):
     """Create kwargs for SSD."""
     return {"dataset_name": "MNIST", "data_dir": "test"}

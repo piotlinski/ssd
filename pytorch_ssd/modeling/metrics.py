@@ -4,7 +4,7 @@ from typing import List, Tuple
 import torch
 from pytorch_lightning.metrics import Metric
 
-from pyssd.data.bboxes import iou
+from pytorch_ssd.data.bboxes import iou
 
 
 class MeanAveragePrecision(Metric):

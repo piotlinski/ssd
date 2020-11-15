@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as functional
 from torchvision.models.mobilenet import mobilenet_v2
 
-from pyssd.modeling.backbones.base import BaseBackbone
+from pytorch_ssd.modeling.backbones.base import BaseBackbone
 
 
 class MobileNetV2(BaseBackbone):

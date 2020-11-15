@@ -2,7 +2,7 @@
 import pytest
 import torch
 
-from pyssd.modeling.loss import MultiBoxLoss
+from pytorch_ssd.modeling.loss import MultiBoxLoss
 
 
 @pytest.fixture
