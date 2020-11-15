@@ -10,7 +10,11 @@ import numpy as np
 import PIL
 import torch
 
-from pyssd.data.datasets.base import BaseDataset, DataTransformType, TargetTransformType
+from pytorch_ssd.data.datasets.base import (
+    BaseDataset,
+    DataTransformType,
+    TargetTransformType,
+)
 
 
 class CLEVR(BaseDataset):

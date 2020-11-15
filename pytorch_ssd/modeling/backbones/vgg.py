@@ -8,7 +8,7 @@ import torch.nn.functional as functional
 from torch.nn import init
 from torchvision.models.vgg import vgg11, vgg11_bn, vgg16, vgg16_bn
 
-from pyssd.modeling.backbones.base import BaseBackbone
+from pytorch_ssd.modeling.backbones.base import BaseBackbone
 
 
 class L2Norm(nn.Module):

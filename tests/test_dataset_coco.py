@@ -4,13 +4,13 @@ from unittest.mock import call, patch
 
 import pytest
 
-from pyssd.data.datasets.coco import COCODetection
+from pytorch_ssd.data.datasets.coco import COCODetection
 
 
-@patch("pyssd.data.datasets.coco.Path.unlink")
-@patch("pyssd.data.datasets.coco.zipfile.ZipFile")
-@patch("pyssd.data.datasets.coco.subprocess.call")
-@patch("pyssd.data.datasets.coco.Path.mkdir")
+@patch("pytorch_ssd.data.datasets.coco.Path.unlink")
+@patch("pytorch_ssd.data.datasets.coco.zipfile.ZipFile")
+@patch("pytorch_ssd.data.datasets.coco.subprocess.call")
+@patch("pytorch_ssd.data.datasets.coco.Path.mkdir")
 def test_download_coco(_mkdir_mock, call_mock, zipfile_mock, _unlink_mock):
     """Verify if COCO dataset can be downloaded."""
     COCODetection.download("test")
@@ -30,7 +30,7 @@ def test_download_coco(_mkdir_mock, call_mock, zipfile_mock, _unlink_mock):
     )
 
 
-@patch("pyssd.data.datasets.coco.COCO")
+@patch("pytorch_ssd.data.datasets.coco.COCO")
 def test_coco_dataset_params(_coco_mock):
     """Test COCODetection dataset params."""
     path = "."

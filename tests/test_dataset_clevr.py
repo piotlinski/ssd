@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pyssd.data.datasets.clevr import CLEVR
+from pytorch_ssd.data.datasets.clevr import CLEVR
 
 
 @pytest.fixture
@@ -102,9 +102,9 @@ def sample_scene_and_annotation():
     return scene, annotation
 
 
-@patch("pyssd.data.datasets.clevr.zipfile.ZipFile")
-@patch("pyssd.data.datasets.clevr.subprocess.call")
-@patch("pyssd.data.datasets.clevr.Path.mkdir")
+@patch("pytorch_ssd.data.datasets.clevr.zipfile.ZipFile")
+@patch("pytorch_ssd.data.datasets.clevr.subprocess.call")
+@patch("pytorch_ssd.data.datasets.clevr.Path.mkdir")
 def test_download_clevr(_mkdir_mock, call_mock, zipfile_mock):
     """Verify if CLEVR dataset can be downloaded."""
     CLEVR.download("test")
@@ -114,8 +114,8 @@ def test_download_clevr(_mkdir_mock, call_mock, zipfile_mock):
     zipfile_mock.assert_called_with(f"test/{CLEVR.CLEVR_URL.split('/')[-1]}")
 
 
-@patch("pyssd.data.datasets.clevr.json.load", return_value={"scenes": []})
-@patch("pyssd.data.datasets.clevr.Path.open")
+@patch("pytorch_ssd.data.datasets.clevr.json.load", return_value={"scenes": []})
+@patch("pytorch_ssd.data.datasets.clevr.Path.open")
 def test_clevr_dataset_params(_open_mock, _load_mock):
     """Test CLEVR dataset params."""
     path = "."
@@ -126,8 +126,8 @@ def test_clevr_dataset_params(_open_mock, _load_mock):
     assert ds.OBJECT_LABEL
 
 
-@patch("pyssd.data.datasets.clevr.json.load", return_value={"scenes": []})
-@patch("pyssd.data.datasets.clevr.Path.open")
+@patch("pytorch_ssd.data.datasets.clevr.json.load", return_value={"scenes": []})
+@patch("pytorch_ssd.data.datasets.clevr.Path.open")
 def test_clevr_extract_bbox_and_label(
     _open_mock, _load_mock, sample_scene_and_annotation
 ):

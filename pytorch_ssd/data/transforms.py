@@ -17,7 +17,7 @@ from albumentations import (
 )
 from albumentations.pytorch import ToTensorV2 as ToTensor
 
-from pyssd.data.bboxes import (
+from pytorch_ssd.data.bboxes import (
     assign_priors,
     center_bbox_to_corner_bbox,
     convert_boxes_to_locations,

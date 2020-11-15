@@ -7,19 +7,26 @@ import pytorch_lightning as pl
 import torch
 import torch.nn.functional as functional
 import wandb
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
 
-from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
-from pyssd.data.datasets import datasets, onehot_labels
-from pyssd.data.priors import process_prior
-from pyssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
-from pyssd.modeling.backbones import backbones
-from pyssd.modeling.box_predictors import box_predictors
-from pyssd.modeling.loss import MultiBoxLoss
-from pyssd.modeling.metrics import MeanAveragePrecision
-from pyssd.modeling.visualize import get_boxes
+from pytorch_ssd.data.bboxes import (
+    center_bbox_to_corner_bbox,
+    convert_locations_to_boxes,
+)
+from pytorch_ssd.data.datasets import datasets, onehot_labels
+from pytorch_ssd.data.priors import process_prior
+from pytorch_ssd.data.transforms import (
+    DataTransform,
+    SSDTargetTransform,
+    TrainDataTransform,
+)
+from pytorch_ssd.modeling.backbones import backbones
+from pytorch_ssd.modeling.box_predictors import box_predictors
+from pytorch_ssd.modeling.loss import MultiBoxLoss
+from pytorch_ssd.modeling.metrics import MeanAveragePrecision
+from pytorch_ssd.modeling.visualize import get_boxes
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +39,8 @@ class SSD(pl.LightningModule):
         dataset_name: str,
         data_dir: str,
         learning_rate: float = 1e-3,
-        lr_reduce_patience: int = 10,
-        lr_warmup_steps: int = 500,
+        warm_restart_epochs: float = 1 / 3,
+        warm_restart_len_mult: int = 2,
         auto_lr_find: bool = False,
         batch_size: int = 32,
         num_workers: int = 8,
@@ -64,7 +71,6 @@ class SSD(pl.LightningModule):
         :param data_dir: dataset data directory path
         :param learning_rate: learning rate
         :param lr_reduce_patience: learning rate reduce on plateau patience (epochs)
-        :param lr_warmup_steps: number of steps with warmup
         :param auto_lr_find: perform auto lr finding
         :param batch_size: mini-batch size for training
         :param num_workers: number of workers for dataloader
@@ -89,6 +95,7 @@ class SSD(pl.LightningModule):
             positive examples for calculating loss
         :param calculate_map: calculate mean average precision during training
         :param map_iou_threshold: mean average precision iou threshold
+        :param visualize: perform visualization during training
         """
         super().__init__()
         self.dataset = datasets[dataset_name]
@@ -133,8 +140,6 @@ class SSD(pl.LightningModule):
         self.negative_positive_ratio = negative_positive_ratio
 
         self.lr = learning_rate
-        self.lr_reduce_patience = lr_reduce_patience
-        self.lr_warmup_steps = lr_warmup_steps
         self.auto_lr_find = auto_lr_find
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -147,6 +152,9 @@ class SSD(pl.LightningModule):
         self.visualize = visualize
 
         self.map = MeanAveragePrecision(iou_threshold=self.map_iou_threshold)
+
+        self.warm_restart_epochs = warm_restart_epochs
+        self.warm_restart_len_mult = warm_restart_len_mult
 
         self.save_hyperparameters()
 
@@ -170,17 +178,16 @@ class SSD(pl.LightningModule):
             help="Learning rate used for training the model",
         )
         parser.add_argument(
-            "--lr-reduce-patience",
-            type=int,
-            default=10,
-            help="Number of epochs with no improvement in validation loss "
-            "required to reduce the learning rate",
+            "--warm-restart-epochs",
+            type=float,
+            default=1 / 3,
+            help="Number of epochs after which a warm restart is performed",
         )
         parser.add_argument(
-            "--lr-warmup-steps",
+            "-warm-restart-len-mult",
             type=int,
-            default=500,
-            help="Number of steps taken with lower lr before starting training",
+            default=2,
+            help="Coef to multiply warm restart epochs after each restart",
         )
         parser.add_argument(
             "--batch-size",
@@ -537,28 +544,23 @@ class SSD(pl.LightningModule):
 
     def configure_optimizers(self):
         """Configure training optimizer."""
+        warm_restart_steps = int(
+            len(self.train_dataloader()) * self.warm_restart_epochs
+        )
+
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        lr_scheduler = ReduceLROnPlateau(
-            optimizer=optimizer, patience=self.lr_reduce_patience
+        lr_scheduler = CosineAnnealingWarmRestarts(
+            optimizer=optimizer,
+            T_0=warm_restart_steps,
+            T_mult=self.warm_restart_len_mult,
         )
         return {
             "optimizer": optimizer,
-            "lr_scheduler": lr_scheduler,
-            "monitor": "val_loss",
+            "lr_scheduler": {
+                "scheduler": lr_scheduler,
+                "interval": "step",
+            },
         }
-
-    def optimizer_step(self, optimizer, *args, **kwargs):
-        """Perform optimizer step with warmup."""
-        if self.trainer.global_step < self.lr_warmup_steps and (
-            (not self.auto_lr_find) or (self.auto_lr_find and self.current_epoch > 0)
-        ):
-            lr_scale = min(
-                1.0, float(self.trainer.global_step + 1) / self.lr_warmup_steps
-            )
-            for pg in optimizer.param_groups:
-                pg["lr"] = lr_scale * self.lr
-
-        super().optimizer_step(optimizer=optimizer, *args, **kwargs)
 
     def train_dataloader(self) -> DataLoader:
         """Prepare train dataloader."""
