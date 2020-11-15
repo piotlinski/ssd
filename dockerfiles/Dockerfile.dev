@@ -22,7 +22,7 @@ RUN curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poet
 
 WORKDIR $PYSETUP_PATH
 COPY poetry.lock pyproject.toml ./
-COPY pyssd ./pyssd
+COPY pytorch_ssd ./pytorch_ssd
 
 RUN poetry install
 
