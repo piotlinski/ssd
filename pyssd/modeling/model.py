@@ -146,9 +146,7 @@ class SSD(pl.LightningModule):
 
         self.map = MeanAveragePrecision(iou_threshold=self.map_iou_threshold)
 
-        self.warm_restart_steps = int(
-            len(self.train_dataloader()) * warm_restart_epochs
-        )
+        self.warm_restart_epochs = warm_restart_epochs
         self.warm_restart_len_mult = warm_restart_len_mult
 
         self.save_hyperparameters()
@@ -539,10 +537,14 @@ class SSD(pl.LightningModule):
 
     def configure_optimizers(self):
         """Configure training optimizer."""
+        warm_restart_steps = int(
+            len(self.train_dataloader()) * self.warm_restart_epochs
+        )
+
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         lr_scheduler = CosineAnnealingWarmRestarts(
             optimizer=optimizer,
-            T_0=self.warm_restart_steps,
+            T_0=warm_restart_steps,
             T_mult=self.warm_restart_len_mult,
         )
         return {
