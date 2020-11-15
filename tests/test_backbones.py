@@ -2,8 +2,8 @@
 import pytest
 import torch
 
-from pyssd.modeling.backbones import MobileNetV2
-from pyssd.modeling.backbones.vgg import (
+from pytorch_ssd.modeling.backbones import MobileNetV2
+from pytorch_ssd.modeling.backbones.vgg import (
     VGG300,
     VGG300BN,
     VGG512,

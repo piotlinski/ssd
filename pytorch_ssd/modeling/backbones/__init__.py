@@ -1,8 +1,8 @@
 from typing import Dict, Type
 
-from pyssd.modeling.backbones.base import BaseBackbone
-from pyssd.modeling.backbones.mobilenetv2 import MobileNetV2
-from pyssd.modeling.backbones.vgg import (
+from pytorch_ssd.modeling.backbones.base import BaseBackbone
+from pytorch_ssd.modeling.backbones.mobilenetv2 import MobileNetV2
+from pytorch_ssd.modeling.backbones.vgg import (
     VGG300,
     VGG300BN,
     VGG512,

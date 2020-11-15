@@ -11,7 +11,11 @@ import PIL
 import torch
 from pycocotools.coco import COCO
 
-from pyssd.data.datasets.base import BaseDataset, DataTransformType, TargetTransformType
+from pytorch_ssd.data.datasets.base import (
+    BaseDataset,
+    DataTransformType,
+    TargetTransformType,
+)
 
 
 class COCODetection(BaseDataset):

@@ -11,15 +11,22 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
 
-from pyssd.data.bboxes import center_bbox_to_corner_bbox, convert_locations_to_boxes
-from pyssd.data.datasets import datasets, onehot_labels
-from pyssd.data.priors import process_prior
-from pyssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
-from pyssd.modeling.backbones import backbones
-from pyssd.modeling.box_predictors import box_predictors
-from pyssd.modeling.loss import MultiBoxLoss
-from pyssd.modeling.metrics import MeanAveragePrecision
-from pyssd.modeling.visualize import get_boxes
+from pytorch_ssd.data.bboxes import (
+    center_bbox_to_corner_bbox,
+    convert_locations_to_boxes,
+)
+from pytorch_ssd.data.datasets import datasets, onehot_labels
+from pytorch_ssd.data.priors import process_prior
+from pytorch_ssd.data.transforms import (
+    DataTransform,
+    SSDTargetTransform,
+    TrainDataTransform,
+)
+from pytorch_ssd.modeling.backbones import backbones
+from pytorch_ssd.modeling.box_predictors import box_predictors
+from pytorch_ssd.modeling.loss import MultiBoxLoss
+from pytorch_ssd.modeling.metrics import MeanAveragePrecision
+from pytorch_ssd.modeling.visualize import get_boxes
 
 logger = logging.getLogger(__name__)
 

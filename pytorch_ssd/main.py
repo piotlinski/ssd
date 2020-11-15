@@ -9,7 +9,7 @@ from pytorch_lightning.callbacks import (
 )
 from pytorch_lightning.loggers import WandbLogger
 
-from pyssd.modeling.model import SSD
+from pytorch_ssd.modeling.model import SSD
 
 
 def main(hparams):

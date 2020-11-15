@@ -4,8 +4,12 @@ from unittest.mock import MagicMock
 import pytest
 import torch
 
-from pyssd.data.priors import process_prior
-from pyssd.data.transforms import DataTransform, SSDTargetTransform, TrainDataTransform
+from pytorch_ssd.data.priors import process_prior
+from pytorch_ssd.data.transforms import (
+    DataTransform,
+    SSDTargetTransform,
+    TrainDataTransform,
+)
 
 
 @pytest.fixture
