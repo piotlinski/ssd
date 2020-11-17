@@ -20,11 +20,6 @@ from pytorch_ssd.data.datasets.base import (
 class CLEVR(BaseDataset):
     """CLEVR dataset."""
 
-    sizes = ["large", "small"]
-    colors = ["gray", "red", "blue", "green", "brown", "purple", "cyan", "yellow"]
-    materials = ["rubber", "metal"]
-    shapes = ["cube", "sphere", "cylinder"]
-
     CLEVR_URL = "https://dl.fbaipublicfiles.com/clevr/CLEVR_v1.0.zip"
 
     datasets = {
@@ -32,7 +27,13 @@ class CLEVR(BaseDataset):
         "test": ("images/val", "scenes/CLEVR_val_scenes.json"),
     }
 
-    CLASS_LABELS: List[str] = []
+    CLASS_LABELS: List[str] = [
+        f"{sz} {clr} {mtrl} {shp}"
+        for sz in ["large", "small"]
+        for clr in ["gray", "red", "blue", "green", "brown", "purple", "cyan", "yellow"]
+        for mtrl in ["rubber", "metal"]
+        for shp in ["cube", "sphere", "cylinder"]
+    ]
     OBJECT_LABEL = "object"
 
     def __init__(
@@ -43,14 +44,6 @@ class CLEVR(BaseDataset):
         subset: str = "train",
     ):
         super().__init__(data_dir, data_transform, target_transform, subset)
-        if not self.CLASS_LABELS:
-            self.CLASS_LABELS = [
-                f"{size} {color} {material} {shape}"
-                for size in self.sizes
-                for color in self.colors
-                for material in self.materials
-                for shape in self.shapes
-            ]
         self.image_dir, annotations_file = self.datasets[subset]
         with self.data_dir.joinpath(annotations_file).open("r") as fp:
             self.annotations = json.load(fp)["scenes"]
