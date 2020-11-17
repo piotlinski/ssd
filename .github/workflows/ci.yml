@@ -14,7 +14,7 @@ jobs:
           python-version: 3.8
 
       - name: Install poetry
-        uses: dschep/install-poetry-action@v1.3
+        uses: abatilo/actions-poetry@v2.1.0
       - name: Cache poetry virtualenv
         uses: actions/cache@v1
         with:
@@ -44,15 +44,8 @@ jobs:
         with:
           extra_args: --hook-stage manual --all-files
 
-      - name: Modify package version
-        run:
-          poetry version $(poetry version | cut -f2 -d ' ')+$(git rev-parse --short
-          HEAD)
-        if: github.event_name == 'push' && !contains(github.ref, 'refs/tags/')
-
       - name: Build and push package to PyPI
         run: |
-          poetry config repositories.trasee https://pypi.trasee.io/simple/
-          poetry config http-basic.trasee github ${{ secrets.pypi_github }}
           poetry build -f wheel
-          poetry publish -r trasee
+          poetry publish -u ${{ secrets.pypi_user }} -p ${{ secrets.pypi_password }} -n
+        if: github.event_name == 'push' && !contains(github.ref, 'refs/tags/')
