@@ -39,7 +39,7 @@ jobs:
           extra_args: --hook-stage manual --all-files
 
       - name: Build and push package to PyPI
-        if: github.event_name == 'push' && !contains(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
         run: |
           poetry build -f wheel
           poetry publish -u "${{ secrets.pypi_user }}" -p "${{ secrets.pypi_password }}" -n
