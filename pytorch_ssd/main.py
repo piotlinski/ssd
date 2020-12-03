@@ -1,7 +1,7 @@
 """Main function for SSD training."""
 from argparse import ArgumentParser
 
-from pytorch_lightning import Trainer
+from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import (
     EarlyStopping,
     LearningRateMonitor,
@@ -14,6 +14,9 @@ from pytorch_ssd.modeling.model import SSD
 
 def main(hparams):
     """Main function that creates and trains SSD model."""
+    if hparams.seed is not None:
+        seed_everything(hparams.seed)
+
     if hparams.checkpoint is not None:
         model = SSD.load_from_checkpoint(
             checkpoint_path=hparams.checkpoint, hparams_file=hparams.hparams_file
@@ -55,6 +58,9 @@ def main(hparams):
 def cli():
     """SSD CLI with argparse."""
     parser = ArgumentParser()
+    parser.add_argument(
+        "-s", "--seed", type=int, default=None, help="Random seed for training"
+    )
     parser.add_argument(
         "-c",
         "--checkpoint",
