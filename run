@@ -1,0 +1,2 @@
+#!/bin/bash
+docker run --rm -e LOCAL_USER_ID=`id -u $USER` -e LOCAL_GROUP_ID=`id -g $USER` -v `pwd`:/app -v ~/datasets:/app/datasets --gpus "device=$1" --shm-size 24G --cpus $2 piotrekzie100/dev:basic ${@:3}

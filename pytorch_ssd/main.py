@@ -42,7 +42,7 @@ def main(hparams):
         name=(
             f"{hparams.dataset_name}-"
             f"{hparams.backbone_name}_{hparams.predictor_name}{hparams.image_size[0]}-"
-            f"bs{hparams.batch_size}-lr{hparams.learning_rate}"
+            f"bs{hparams.batch_size}-lr{hparams.learning_rate}-seed{hparams.seed}"
         ),
         save_dir=hparams.default_root_dir,
         project="ssd",
