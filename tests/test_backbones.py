@@ -1,8 +1,9 @@
 """Test VGG backbone."""
+
 import pytest
 import torch
 
-from pytorch_ssd.modeling.backbones import MobileNetV2
+from pytorch_ssd.modeling.backbones import MobileNetV2, ResNeXt50_300, ResNeXt101_300
 from pytorch_ssd.modeling.backbones.vgg import (
     VGG300,
     VGG300BN,
@@ -37,6 +38,8 @@ def test_l2norm(n_channels, scale):
         (VGGLite, 300),
         (VGGLiteBN, 300),
         (MobileNetV2, 300),
+        (ResNeXt50_300, 300),
+        (ResNeXt101_300, 300),
     ],
 )
 def test_forward(backbone, shape):
