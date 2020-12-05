@@ -40,7 +40,7 @@ class ResNeXt(BaseBackbone, ABC):
 
     def _build_backbone(self) -> nn.Module:
         """Build ResNeXt backbone."""
-        backbone = self._resnext(use_pretrained=self.use_pretrained)
+        backbone = self._resnext(pretrained=self.use_pretrained)
         return nn.Sequential(*list(backbone.children())[:-2])
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
