@@ -19,6 +19,7 @@ wandb = "^0.10.9"
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.2"
 pytest-cov = "^2.10.1"
+ipython = "^7.19.0"
 
 [tool.poetry.scripts]
 ssd = "pytorch_ssd.main:cli"
