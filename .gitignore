@@ -220,5 +220,11 @@ dmypy.json
 # data dir
 data/*
 
+# runs dir
+runs/*
+
+# pretrained dir
+pretrained/*
+
 # env file
 .env
