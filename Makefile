@@ -15,8 +15,8 @@ WANDB_API_KEY ?=
 build.prod:  ## Build docker production image
 	docker build  --build-arg WANDB_API_KEY=$(WANDB_API_KEY) -f dockerfiles/Dockerfile.prod -t $(tag) .
 
-shell:  ## Run docker dev shell
-	$(DOCKER_RUN) -it $(tag)-dev /bin/bash
+shell:  ## Run basic docker dev shell
+	$(DOCKER_RUN) -it piotrekzie100/dev:basic /bin/bash
 
 args ?= -vvv --cov pyssd
 test:  ## Run tests
@@ -27,5 +27,6 @@ ssd_args ?= ssd --default_root_dir runs
 run:  ## Run model
 	$(DOCKER_RUN) $(LOCAL_USER) --gpus '"device=$(gpu)"' --shm-size 24G $(tag) $(ssd_args)
 
+cmd ?= python3 train.py $(ssd_args)
 run.basic:  ## Run model using basic docker
-	$(DOCKER_RUN) $(LOCAL_USER) --gpus '"device=$(gpu)"' --shm-size 24G piotrekzie100/dev:basic python3 train.py $(ssd_args)
+	$(DOCKER_RUN) $(LOCAL_USER) --gpus '"device=$(gpu)"' --shm-size 24G --cpus 16 piotrekzie100/dev:basic $(cmd)
