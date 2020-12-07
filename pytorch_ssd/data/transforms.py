@@ -96,6 +96,7 @@ class DataTransform:
             Normalize(
                 mean=pixel_mean,
                 std=pixel_std,
+                max_pixel_value=1.0,
             ),
             ToTensor(),
         ]
