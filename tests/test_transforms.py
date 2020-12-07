@@ -53,7 +53,7 @@ def test_data_transform(inputs):
     """Test basic data transform."""
     image_size = (20, 20)
     transform = DataTransform(
-        image_size=image_size, pixel_mean=(0.0, 0.0, 0.0), pixel_std=(1.0, 1.0, 1.0)
+        image_size=image_size, pixel_mean=[0.0, 0.0, 0.0], pixel_std=[1.0, 1.0, 1.0]
     )
     image, bboxes, labels = inputs
     t_image, t_bboxes, t_labels = transform(image=image, bboxes=bboxes, labels=labels)
@@ -67,8 +67,8 @@ def test_adding_transforms(inputs):
     transform_mock = MagicMock()
     transform = DataTransform(
         image_size=(30, 30),
-        pixel_mean=(0.0, 0.0, 0.0),
-        pixel_std=(1.0, 1.0, 1.0),
+        pixel_mean=[0.0, 0.0, 0.0],
+        pixel_std=[1.0, 1.0, 1.0],
         transforms=[transform_mock],
     )
     assert transform_mock in transform.transforms
@@ -78,7 +78,7 @@ def test_image_only_transform(inputs):
     """Test transforming only image."""
     image_size = (20, 20)
     transform = DataTransform(
-        image_size=image_size, pixel_mean=(0.0, 0.0, 0.0), pixel_std=(1.0, 1.0, 1.0)
+        image_size=image_size, pixel_mean=[0.0, 0.0, 0.0], pixel_std=[1.0, 1.0, 1.0]
     )
     image, *_ = inputs
     t_image, t_bboxes, t_labels = transform(image=image)
@@ -91,7 +91,7 @@ def test_train_transform(inputs):
     """Test train data transform."""
     image_size = (20, 20)
     transform = TrainDataTransform(
-        image_size=image_size, pixel_mean=(0.0, 0.0, 0.0), pixel_std=(1.0, 1.0, 1.0)
+        image_size=image_size, pixel_mean=[0.0, 0.0, 0.0], pixel_std=[1.0, 1.0, 1.0]
     )
     image, bboxes, labels = inputs
     t_image, _, _ = transform(image=image, bboxes=bboxes, labels=labels)

@@ -78,8 +78,8 @@ class DataTransform:
     def __init__(
         self,
         image_size: Tuple[int, int],
-        pixel_mean: Tuple[float, ...],
-        pixel_std: Tuple[float, ...],
+        pixel_mean: List[float],
+        pixel_std: List[float],
         transforms: Optional[List[BasicTransform]] = None,
     ):
         """
@@ -96,7 +96,6 @@ class DataTransform:
             Normalize(
                 mean=pixel_mean,
                 std=pixel_std,
-                max_pixel_value=1.0,
             ),
             ToTensor(),
         ]
@@ -135,8 +134,8 @@ class TrainDataTransform(DataTransform):
     def __init__(
         self,
         image_size: Tuple[int, int],
-        pixel_mean: Tuple[float, ...],
-        pixel_std: Tuple[float, ...],
+        pixel_mean: List[float],
+        pixel_std: List[float],
         flip: bool = False,
         augment_colors: bool = False,
     ):
