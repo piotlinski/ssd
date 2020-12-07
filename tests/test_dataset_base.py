@@ -1,6 +1,5 @@
 """Tests for base dataset class."""
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import torch
@@ -17,17 +16,6 @@ def test_base_dataset_params():
     assert ds.target_transform is None
     assert ds.CLASS_LABELS == []
     assert ds.OBJECT_LABEL == ""
-
-
-@patch("pytorch_ssd.data.datasets.base.BaseDataset.__len__", return_value=10)
-@patch("pytorch_ssd.data.datasets.base.BaseDataset.__getitem__")
-def test_calculating_dataset_stats(getitem_mock, _len_mock):
-    """Verify if dataset stats are calculated properly."""
-    getitem_mock.return_value = torch.ones((5, 5, 3)), None, None
-    ds = BaseDataset(".")
-    pixel_mean, pixel_std = ds.pixel_mean_std()
-    assert pixel_mean == 3 * (1,)
-    assert pixel_std == 3 * (0,)
 
 
 @pytest.mark.parametrize(
