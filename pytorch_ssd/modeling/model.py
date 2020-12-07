@@ -26,7 +26,7 @@ from pytorch_ssd.modeling.backbones import backbones
 from pytorch_ssd.modeling.box_predictors import box_predictors
 from pytorch_ssd.modeling.loss import MultiBoxLoss
 from pytorch_ssd.modeling.metrics import MeanAveragePrecision
-from pytorch_ssd.modeling.visualize import get_boxes
+from pytorch_ssd.modeling.visualize import denormalize, get_boxes
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +52,6 @@ class SSD(pl.LightningModule):
         use_pretrained_backbone: bool = False,
         predictor_name: str = "SSD",
         image_size: Tuple[int, int] = (300, 300),
-        pixel_mean: Tuple[float, ...] = (0.0, 0.0, 0.0),
-        pixel_std: Tuple[float, ...] = (1.0, 1.0, 1.0),
         center_variance: float = 0.1,
         size_variance: float = 0.2,
         iou_threshold: float = 0.5,
@@ -83,8 +81,6 @@ class SSD(pl.LightningModule):
         :param use_pretrained_backbone: download pretrained weights for backbone
         :param predictor_name: used predictor name
         :param image_size: image size tuple
-        :param pixel_mean: data pixel mean per channel
-        :param pixel_std: data pixel std per channel
         :param center_variance: SSD center variance
         :param size_variance: SSD size variance
         :param iou_threshold: IOU threshold for anchors
@@ -130,8 +126,6 @@ class SSD(pl.LightningModule):
             iou_threshold=iou_threshold,
         )
         self.image_size = image_size
-        self.pixel_mean = pixel_mean
-        self.pixel_std = pixel_std
         self.center_variance = center_variance
         self.size_variance = size_variance
         self.confidence_threshold = confidence_threshold
@@ -244,20 +238,6 @@ class SSD(pl.LightningModule):
             type=int,
             default=[300, 300],
             help="Size of the model input image",
-        )
-        parser.add_argument(
-            "--pixel-mean",
-            nargs=3,
-            type=float,
-            default=[0.0, 0.0, 0.0],
-            help="Input image pixel means.",
-        )
-        parser.add_argument(
-            "--pixel-std",
-            nargs=3,
-            type=float,
-            default=[1.0, 1.0, 1.0],
-            help="Input image pixel stds.",
         )
         parser.add_argument(
             "--center-variance", type=float, default=0.1, help="SSD box center variance"
@@ -492,13 +472,11 @@ class SSD(pl.LightningModule):
 
             if self.visualize:
                 image = images[0].detach().permute(1, 2, 0)
-                denominator = torch.reciprocal(
-                    torch.tensor(self.pixel_std, device=self.device)
+                image = denormalize(
+                    image,
+                    pixel_mean=self.backbone.PIXEL_MEANS,
+                    pixel_std=self.backbone.PIXEL_STDS,
                 )
-                image = image / denominator + torch.tensor(
-                    self.pixel_mean, device=self.device
-                )
-                image.clamp_(min=0, max=1)
 
                 ((gt_boxes, gt_scores, gt_labels),) = self.process_model_prediction(
                     labels[0].detach().unsqueeze(0),
@@ -566,8 +544,8 @@ class SSD(pl.LightningModule):
         """Prepare train dataloader."""
         data_transform = TrainDataTransform(
             image_size=self.image_size,
-            pixel_mean=self.pixel_mean,
-            pixel_std=self.pixel_std,
+            pixel_mean=self.backbone.PIXEL_MEANS,
+            pixel_std=self.backbone.PIXEL_STDS,
             flip=self.flip_train,
             augment_colors=self.augment_colors_train,
         )
@@ -589,8 +567,8 @@ class SSD(pl.LightningModule):
         """Prepare validation dataloader."""
         data_transform = DataTransform(
             image_size=self.image_size,
-            pixel_mean=self.pixel_mean,
-            pixel_std=self.pixel_std,
+            pixel_mean=self.backbone.PIXEL_MEANS,
+            pixel_std=self.backbone.PIXEL_STDS,
         )
         dataset = self.dataset(
             self.data_dir,
