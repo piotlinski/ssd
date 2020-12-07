@@ -61,20 +61,6 @@ class BaseDataset(data.Dataset, ABC):
         """Get length of the dataset."""
         raise NotImplementedError
 
-    def pixel_mean_std(self) -> Tuple[Tuple[float, ...], Tuple[float, ...]]:
-        """Calculate mean value of pixels and their std in the dataset."""
-        means = []
-        stds = []
-        for idx in range(len(self)):
-            image, *_ = self[idx]
-            mean = torch.mean(image, dim=(0, 1))
-            std = torch.std(image, dim=(0, 1))
-            means.append(mean)
-            stds.append(std)
-        pixel_mean = torch.mean(torch.stack(means), dim=0).tolist()
-        pixel_std = torch.mean(torch.stack(stds), dim=0).tolist()
-        return tuple(pixel_mean), tuple(pixel_std)
-
     @classmethod
     def download(cls, path: str):
         """Download dataset files."""

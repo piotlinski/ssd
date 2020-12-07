@@ -4,6 +4,16 @@ from typing import Any, Dict, Iterable, List
 import torch
 
 
+def denormalize(
+    images: torch.Tensor, pixel_mean: List[float], pixel_std: List[float]
+) -> torch.Tensor:
+    """Denormalize torch images."""
+    denominator = torch.reciprocal(torch.tensor(pixel_std, device=images.device))
+    images = images / denominator + torch.tensor(pixel_mean, device=images.device)
+    images.clamp_(min=0, max=1)
+    return images
+
+
 def create_box_list(
     boxes: torch.Tensor,
     scores: torch.Tensor,
