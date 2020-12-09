@@ -11,6 +11,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
 
+from pytorch_ssd.args import str2bool
 from pytorch_ssd.data.bboxes import (
     center_bbox_to_corner_bbox,
     convert_locations_to_boxes,
@@ -157,163 +158,157 @@ class SSD(pl.LightningModule):
         """Add SSD args to parent argument parser."""
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument(
-            "--dataset-name",
+            "--dataset_name",
             type=str,
             default="MNIST",
             help=f"Used dataset name. Available: {list(datasets.keys())}",
         )
         parser.add_argument(
-            "--data-dir", type=str, default="data", help="Dataset files directory"
+            "--data_dir", type=str, default="data", help="Dataset files directory"
         )
         parser.add_argument(
-            "--learning-rate",
+            "--learning_rate",
             type=float,
             default=1e-3,
             help="Learning rate used for training the model",
         )
         parser.add_argument(
-            "--warm-restart-epochs",
+            "--warm_restart_epochs",
             type=float,
             default=1 / 3,
             help="Number of epochs after which a warm restart is performed",
         )
         parser.add_argument(
-            "-warm-restart-len-mult",
+            "--warm_restart_len_mult",
             type=int,
             default=2,
             help="Coef to multiply warm restart epochs after each restart",
         )
         parser.add_argument(
-            "--batch-size",
+            "--batch_size",
             type=int,
             default=32,
             help="Mini-batch size used for training the model",
         )
         parser.add_argument(
-            "--num-workers",
+            "--num_workers",
             type=int,
             default=8,
             help="Number of workers used to load the dataset",
         )
         parser.add_argument(
-            "--pin-memory",
+            "--pin_memory",
+            type=str2bool,
+            nargs="?",
+            const=True,
             default=True,
-            action="store_true",
             help="Pin data in memory while training",
         )
-        parser.add_argument("--no-pin-memory", dest="pin_memory", action="store_false")
         parser.add_argument(
-            "--n-classes",
+            "--n_classes",
             type=int,
             default=None,
             help="Number of classes used for training. "
             "If == 2 then only detection without classification",
         )
         parser.add_argument(
-            "--backbone-name",
+            "--backbone_name",
             type=str,
             default="VGG300",
             help=f"Used backbone name. Available: {list(backbones.keys())}",
         )
         parser.add_argument(
-            "--use-pretrained-backbone",
+            "--use_pretrained_backbone",
+            type=str2bool,
+            nargs="?",
+            const=True,
             default=False,
-            action="store_true",
             help="Start off from pretrained weights from torchvision",
         )
         parser.add_argument(
-            "--no-use-pretrained-backbone",
-            dest="use_pretrained_backbone",
-            action="store_false",
-        )
-        parser.add_argument(
-            "--predictor-name",
+            "--predictor_name",
             type=str,
             default="SSD",
             help=f"Used box predictor name. Available: {list(box_predictors.keys())}",
         )
         parser.add_argument(
-            "--image-size",
+            "--image_size",
             nargs=2,
             type=int,
             default=[300, 300],
             help="Size of the model input image",
         )
         parser.add_argument(
-            "--center-variance", type=float, default=0.1, help="SSD box center variance"
+            "--center_variance", type=float, default=0.1, help="SSD box center variance"
         )
         parser.add_argument(
-            "--size-variance", type=float, default=0.2, help="SSD box size variance"
+            "--size_variance", type=float, default=0.2, help="SSD box size variance"
         )
         parser.add_argument(
-            "--iou-threshold", type=float, default=0.5, help="IOU threshold for anchors"
+            "--iou_threshold", type=float, default=0.5, help="IOU threshold for anchors"
         )
         parser.add_argument(
-            "--confidence-threshold",
+            "--confidence_threshold",
             type=float,
             default=0.8,
             help="Minimum prediction confidence to approve during inference",
         )
         parser.add_argument(
-            "--nms-threshold",
+            "--nms_threshold",
             type=float,
             default=0.45,
             help="Non-max suppression IOU threshold",
         )
         parser.add_argument(
-            "--max-per-image",
+            "--max_per_image",
             type=int,
             default=100,
             help="Max number of detections returned per image during inference",
         )
         parser.add_argument(
-            "--negative-positive-ratio",
+            "--negative_positive_ratio",
             type=float,
             default=3,
             help="Ratio between negative and positive examples for loss",
         )
         parser.add_argument(
-            "--flip-train",
+            "--flip_train",
+            type=str2bool,
+            nargs="?",
+            const=True,
             default=False,
-            action="store_true",
             help="Flip train images during training",
         )
-        parser.add_argument("--no-flip-train", dest="flip_train", action="store_false")
         parser.add_argument(
-            "--augment-colors-train",
+            "--augment_colors_train",
+            type=str2bool,
+            nargs="?",
+            const=True,
             default=False,
-            action="store_true",
             help="Perform random colors augmentation during training",
         )
         parser.add_argument(
-            "--no-augment-colors-train",
-            dest="augment_colors_train",
-            action="store_false",
-        )
-        parser.add_argument(
-            "--calculate-map",
+            "--calculate_map",
+            type=str2bool,
+            nargs="?",
+            const=True,
             default=True,
-            action="store_true",
             help="Calculate Mean Average Precision during training",
         )
         parser.add_argument(
-            "--no-calculate-map",
-            dest="calculate_map",
-            action="store_false",
-        )
-        parser.add_argument(
-            "--map-iou-threshold",
+            "--map_iou_threshold",
             type=float,
             default=0.5,
             help="Mean Average Precision metric Intersection over Union threshold",
         )
         parser.add_argument(
             "--visualize",
+            type=str2bool,
+            nargs="?",
+            const=True,
             default=True,
-            action="store_true",
             help="Log visualizations of model predictions",
         )
-        parser.add_argument("--no-visualize", dest="visualize", action="store_false")
         return parser
 
     def process_model_output(
