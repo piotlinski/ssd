@@ -40,6 +40,7 @@ class SSD(pl.LightningModule):
         dataset_name: str,
         data_dir: str,
         learning_rate: float = 1e-3,
+        momentum: float = 0.9,
         warm_restart_epochs: float = 1 / 3,
         warm_restart_len_mult: int = 2,
         auto_lr_find: bool = False,
@@ -69,6 +70,7 @@ class SSD(pl.LightningModule):
         :param dataset_name: used dataset name
         :param data_dir: dataset data directory path
         :param learning_rate: learning rate
+        :param momentum: SGD momentum
         :param lr_reduce_patience: learning rate reduce on plateau patience (epochs)
         :param auto_lr_find: perform auto lr finding
         :param batch_size: mini-batch size for training
@@ -135,6 +137,7 @@ class SSD(pl.LightningModule):
         self.negative_positive_ratio = negative_positive_ratio
 
         self.lr = learning_rate
+        self.momentum = momentum
         self.auto_lr_find = auto_lr_find
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -171,6 +174,12 @@ class SSD(pl.LightningModule):
             type=float,
             default=1e-3,
             help="Learning rate used for training the model",
+        )
+        parser.add_argument(
+            "--momentum",
+            type=float,
+            default=0.9,
+            help="Momentum used for training the model with SGD",
         )
         parser.add_argument(
             "--warm_restart_epochs",
@@ -521,7 +530,9 @@ class SSD(pl.LightningModule):
             len(self.train_dataloader()) * self.warm_restart_epochs
         )
 
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.SGD(
+            self.parameters(), lr=self.lr, momentum=self.momentum
+        )
         lr_scheduler = CosineAnnealingWarmRestarts(
             optimizer=optimizer,
             T_0=warm_restart_steps,
