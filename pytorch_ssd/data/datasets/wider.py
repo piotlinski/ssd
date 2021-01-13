@@ -57,7 +57,9 @@ class WIDERFace(BaseDataset):
     ):
         super().__init__(data_dir, data_transform, target_transform, subset)
         self.image_dir, annotations_file = self.datasets[subset]
-        self.annotations = self.parse_wider_annotations(annotations_file)
+        self.annotations = self.parse_wider_annotations(
+            self.data_dir.joinpath(annotations_file)
+        )
         self.image_files = list(self.annotations.keys())
 
     def __len__(self):
@@ -73,11 +75,10 @@ class WIDERFace(BaseDataset):
         boxes, labels = self.annotations[self.image_files[item]]
         return boxes.float(), labels.long()
 
-    def parse_wider_annotations(self, annotations_file: str) -> Dict[Path, Any]:
+    def parse_wider_annotations(self, annotations_file: Path) -> Dict[Path, Any]:
         """Parse WIDER annotation file for training detection model."""
-        annotations_filepath = Path(annotations_file)
         annotations = {}
-        with annotations_filepath.open("r") as f:
+        with annotations_file.open("r") as f:
             file_name_line, num_boxes_line, box_annotation_line = True, False, False
             num_boxes, box_counter = 0, 0
             labels = []
@@ -96,24 +97,22 @@ class WIDERFace(BaseDataset):
                 elif box_annotation_line:
                     box_counter += 1
                     line_split = line.split(" ")
-                    line_values = [int(x) for x in line_split]
+                    line_values = [float(x) for x in line_split]
                     labels.append(line_values)
                     if box_counter >= num_boxes:
+                        bboxes = []
                         box_annotation_line = False
                         file_name_line = True
-                        labels_tensor = torch.tensor(labels)
-                        bbox = labels_tensor[:, 0:4]
-                        corner_bbox = torch.hstack(
-                            (
-                                bbox[:, :2],
-                                bbox[:, [0]] + bbox[:, [2]],
-                                bbox[:, [1]] + bbox[:, [3]],
+                        for label in labels:
+                            x0, y0, w, h = label[0:4]
+                            if w == 0 or h == 0:
+                                continue
+                            bboxes.append([x0, y0, x0 + w, y0 + h])
+                        if bboxes:
+                            annotations[img_path] = (
+                                torch.tensor(bboxes),
+                                torch.ones(len(bboxes), dtype=torch.int64),
                             )
-                        )
-                        annotations[img_path] = (
-                            corner_bbox,
-                            torch.ones(corner_bbox.shape[0], dtype=torch.int64),
-                        )
                         box_counter = 0
                         labels = []
         return annotations
