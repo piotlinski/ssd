@@ -15,7 +15,7 @@ def str2bool(value: Union[str, bool]) -> bool:
         raise ArgumentTypeError("Boolean value expected.")
 
 
-def pair(value: str) -> Tuple[int, int]:
+def comma_separated(value: str) -> Tuple[int, ...]:
     """Convert comma-separated values to tuple."""
-    first, second = value.split(",")
-    return int(first), int(second)
+    converted = [int(v) for v in value.split(",")]
+    return tuple(converted)

@@ -11,7 +11,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
 
-from pytorch_ssd.args import pair, str2bool
+from pytorch_ssd.args import comma_separated, str2bool
 from pytorch_ssd.data.bboxes import (
     center_bbox_to_corner_bbox,
     convert_locations_to_boxes,
@@ -258,8 +258,6 @@ class SSD(pl.LightningModule):
             default=False,
             help="Start off from pretrained weights from torchvision",
         )
-        # backbone_aspect_ratios: Optional[List[Tuple[int, ...]]] = None,
-        # :param backbone_aspect_ratios: aspect ratios for each backbone feature map
         parser.add_argument(
             "--backbone_out_channels",
             nargs="+",
@@ -298,7 +296,7 @@ class SSD(pl.LightningModule):
         parser.add_argument(
             "--backbone_aspect_ratios",
             nargs="+",
-            type=pair,
+            type=comma_separated,
             default=None,
             help="Aspect ratios for each backbone feature map (None for default)",
         )
