@@ -118,12 +118,12 @@ class SSD(pl.LightningModule):
         )
         backbone = backbones[backbone_name]
         backbone_kwargs = {
-            "backbone_out_channels": backbone_out_channels,
-            "backbone_feature_maps": backbone_feature_maps,
-            "backbone_min_sizes": backbone_min_sizes,
-            "backbone_max_sizes": backbone_max_sizes,
-            "backbone_strides": backbone_strides,
-            "backbone_aspect_ratios": backbone_aspect_ratios,
+            "out_channels": backbone_out_channels,
+            "feature_maps": backbone_feature_maps,
+            "min_sizes": backbone_min_sizes,
+            "max_sizes": backbone_max_sizes,
+            "strides": backbone_strides,
+            "aspect_ratios": backbone_aspect_ratios,
         }
         if any(kwarg is None for kwarg in backbone_kwargs):
             backbone_kwargs = {}
