@@ -37,13 +37,13 @@ class L2Norm(nn.Module):
 class VGGLite(BaseBackbone):
     """VGG11 light backbone."""
 
-    def __init__(self, use_pretrained: bool):
-        self.out_channels = [512, 512, 512, 256, 256]
-        self.feature_maps = [18, 9, 5, 3, 1]
-        self.min_sizes = [32, 80, 153, 207, 261]
-        self.max_sizes = [80, 153, 207, 261, 315]
-        self.strides = [16, 32, 64, 100, 300]
-        self.aspect_ratios = [(), (), (), (), ()]
+    def __init__(self, use_pretrained: bool, **kwargs):
+        self.out_channels = kwargs.get("out_channels") or [512, 512, 512, 256, 256]
+        self.feature_maps = kwargs.get("feature_maps") or [18, 9, 5, 3, 1]
+        self.min_sizes = kwargs.get("min_sizes") or [32, 80, 153, 207, 261]
+        self.max_sizes = kwargs.get("max_sizes") or [80, 153, 207, 261, 315]
+        self.strides = kwargs.get("strides") or [16, 32, 64, 100, 300]
+        self.aspect_ratios = kwargs.get("aspect_ratios") or [(), (), (), (), ()]
         super().__init__(
             use_pretrained=use_pretrained,
         )
@@ -184,15 +184,16 @@ class VGG16(BaseBackbone, ABC):
 class VGG300(VGG16):
     """VGG16 backbone for 300x300 input."""
 
-    def __init__(self, use_pretrained: bool, batch_norm: bool = False):
+    def __init__(self, use_pretrained: bool, batch_norm: bool = False, **kwargs):
         super().__init__(
             batch_norm=batch_norm,
-            out_channels=[512, 1024, 512, 256, 256, 256],
-            feature_maps=[38, 19, 10, 5, 3, 1],
-            min_sizes=[21, 45, 99, 153, 207, 261],
-            max_sizes=[45, 99, 153, 207, 261, 315],
-            strides=[8, 16, 32, 64, 100, 300],
-            aspect_ratios=[(2,), (2, 3), (2, 3), (2, 3), (2,), (2,)],
+            out_channels=kwargs.get("out_channels") or [512, 1024, 512, 256, 256, 256],
+            feature_maps=kwargs.get("feature_maps") or [38, 19, 10, 5, 3, 1],
+            min_sizes=kwargs.get("min_sizes") or [21, 45, 99, 153, 207, 261],
+            max_sizes=kwargs.get("max_sizes") or [45, 99, 153, 207, 261, 315],
+            strides=kwargs.get("strides") or [8, 16, 32, 64, 100, 300],
+            aspect_ratios=kwargs.get("aspect_ratios")
+            or [(2,), (2, 3), (2, 3), (2, 3), (2,), (2,)],
             use_pretrained=use_pretrained,
         )
 
@@ -218,22 +219,26 @@ class VGG300(VGG16):
 class VGG300BN(VGG300):
     """Batch Norm version of VGG300."""
 
-    def __init__(self, use_pretrained: bool):
-        super().__init__(use_pretrained=use_pretrained, batch_norm=True)
+    def __init__(self, use_pretrained: bool, **kwargs):
+        super().__init__(use_pretrained=use_pretrained, batch_norm=True, **kwargs)
 
 
 class VGG512(VGG16):
     """VGG16 backbone for 512x512 input."""
 
-    def __init__(self, use_pretrained: bool, batch_norm: bool = False):
+    def __init__(self, use_pretrained: bool, batch_norm: bool = False, **kwargs):
         super().__init__(
             batch_norm=batch_norm,
-            out_channels=[512, 1024, 512, 256, 256, 256, 256],
-            feature_maps=[64, 32, 16, 8, 4, 2, 1],
-            min_sizes=[20.48, 51.2, 133.12, 215.04, 296.96, 378.88, 460.8],
-            max_sizes=[51.2, 133.12, 215.04, 296.96, 378.88, 460.8, 542.72],
-            strides=[8, 16, 32, 64, 128, 256, 512],
-            aspect_ratios=[(2,), (2, 3), (2, 3), (2, 3), (2, 3), (2,), (2,)],
+            out_channels=kwargs.get("out_channels")
+            or [512, 1024, 512, 256, 256, 256, 256],
+            feature_maps=kwargs.get("feature_maps") or [64, 32, 16, 8, 4, 2, 1],
+            min_sizes=kwargs.get("min_sizes")
+            or [20.48, 51.2, 133.12, 215.04, 296.96, 378.88, 460.8],
+            max_sizes=kwargs.get("max_sizes")
+            or [51.2, 133.12, 215.04, 296.96, 378.88, 460.8, 542.72],
+            strides=kwargs.get("strides") or [8, 16, 32, 64, 128, 256, 512],
+            aspect_ratios=kwargs.get("aspect_ratios")
+            or [(2,), (2, 3), (2, 3), (2, 3), (2, 3), (2,), (2,)],
             use_pretrained=use_pretrained,
         )
 
@@ -267,5 +272,5 @@ class VGG512(VGG16):
 class VGG512BN(VGG512):
     """Batch Norm version of VGG512."""
 
-    def __init__(self, use_pretrained: bool):
-        super().__init__(use_pretrained=use_pretrained, batch_norm=True)
+    def __init__(self, use_pretrained: bool, **kwargs):
+        super().__init__(use_pretrained=use_pretrained, batch_norm=True, **kwargs)

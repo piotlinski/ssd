@@ -64,14 +64,14 @@ class ResNeXt(BaseBackbone, ABC):
 class ResNeXt300(ResNeXt, ABC):
     """ResNeXt backbone for 300x300 input."""
 
-    def __init__(self, use_pretrained: bool, resnext_size: int):
+    def __init__(self, use_pretrained: bool, resnext_size: int, **kwargs):
         super().__init__(
-            out_channels=[1024, 2048, 2048, 2048, 2048],
-            feature_maps=[19, 10, 5, 3, 1],
-            min_sizes=[32, 80, 153, 207, 261],
-            max_sizes=[80, 153, 207, 261, 315],
-            strides=[16, 32, 64, 100, 300],
-            aspect_ratios=[(), (), (), (), ()],
+            out_channels=kwargs.get("out_channels") or [1024, 2048, 2048, 2048, 2048],
+            feature_maps=kwargs.get("feature_maps") or [19, 10, 5, 3, 1],
+            min_sizes=kwargs.get("min_sizes") or [32, 80, 153, 207, 261],
+            max_sizes=kwargs.get("max_sizes") or [80, 153, 207, 261, 315],
+            strides=kwargs.get("strides") or [16, 32, 64, 100, 300],
+            aspect_ratios=kwargs.get("aspect_ratios") or [(), (), (), (), ()],
             use_pretrained=use_pretrained,
             resnext_size=resnext_size,
         )
@@ -96,12 +96,12 @@ class ResNeXt300(ResNeXt, ABC):
 class ResNeXt50_300(ResNeXt300):
     """ResNeXt50 backbone for 300x300 input."""
 
-    def __init__(self, use_pretrained: bool):
-        super().__init__(use_pretrained=use_pretrained, resnext_size=50)
+    def __init__(self, use_pretrained: bool, **kwargs):
+        super().__init__(use_pretrained=use_pretrained, resnext_size=50, **kwargs)
 
 
 class ResNeXt101_300(ResNeXt300):
     """ResNeXt101 backbone for 300x300 input."""
 
-    def __init__(self, use_pretrained: bool):
-        super().__init__(use_pretrained=use_pretrained, resnext_size=101)
+    def __init__(self, use_pretrained: bool, **kwargs):
+        super().__init__(use_pretrained=use_pretrained, resnext_size=101, **kwargs)

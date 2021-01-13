@@ -11,7 +11,7 @@ class BaseBackbone(nn.Module, ABC):
     PIXEL_MEANS = [0.485, 0.456, 0.406]
     PIXEL_STDS = [0.229, 0.224, 0.225]
 
-    def __init__(self, use_pretrained: bool):
+    def __init__(self, use_pretrained: bool, **kwargs):
         """
         :param use_pretrained: use pretrained backbone
         """

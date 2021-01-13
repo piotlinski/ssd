@@ -11,7 +11,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
 
-from pytorch_ssd.args import str2bool
+from pytorch_ssd.args import pair, str2bool
 from pytorch_ssd.data.bboxes import (
     center_bbox_to_corner_bbox,
     convert_locations_to_boxes,
@@ -52,6 +52,12 @@ class SSD(pl.LightningModule):
         augment_colors_train: bool = False,
         backbone_name: str = "VGG300",
         use_pretrained_backbone: bool = False,
+        backbone_out_channels: Optional[List[int]] = None,
+        backbone_feature_maps: Optional[List[int]] = None,
+        backbone_min_sizes: Optional[List[float]] = None,
+        backbone_max_sizes: Optional[List[float]] = None,
+        backbone_strides: Optional[List[int]] = None,
+        backbone_aspect_ratios: Optional[List[Tuple[int, ...]]] = None,
         predictor_name: str = "SSD",
         image_size: Tuple[int, int] = (300, 300),
         center_variance: float = 0.1,
@@ -82,6 +88,12 @@ class SSD(pl.LightningModule):
         :param augment_colors_train: perform random colors augmentation on train images
         :param backbone_name: used backbone name
         :param use_pretrained_backbone: download pretrained weights for backbone
+        :param backbone_out_channels: output channels of backbone (None for default)
+        :param backbone_feature_maps: number of feature maps in each backbone output
+        :param backbone_min_sizes: minimal sizes of objects in each feature map
+        :param backbone_max_sizes: maximal sizes of objects in each feature map
+        :param backbone_strides: backbone strides used in each feature map
+        :param backbone_aspect_ratios: aspect ratios for each backbone feature map
         :param predictor_name: used predictor name
         :param image_size: image size tuple
         :param center_variance: SSD center variance
@@ -105,7 +117,19 @@ class SSD(pl.LightningModule):
             self.dataset.CLASS_LABELS if n_classes != 2 else [self.dataset.OBJECT_LABEL]
         )
         backbone = backbones[backbone_name]
-        self.backbone = backbone(use_pretrained=use_pretrained_backbone)
+        backbone_kwargs = {
+            "backbone_out_channels": backbone_out_channels,
+            "backbone_feature_maps": backbone_feature_maps,
+            "backbone_min_sizes": backbone_min_sizes,
+            "backbone_max_sizes": backbone_max_sizes,
+            "backbone_strides": backbone_strides,
+            "backbone_aspect_ratios": backbone_aspect_ratios,
+        }
+        if any(kwarg is None for kwarg in backbone_kwargs):
+            backbone_kwargs = {}
+        self.backbone = backbone(
+            use_pretrained=use_pretrained_backbone, **backbone_kwargs
+        )
         predictor = box_predictors[predictor_name]
         self.predictor = predictor(
             n_classes=n_classes,
@@ -233,6 +257,50 @@ class SSD(pl.LightningModule):
             const=True,
             default=False,
             help="Start off from pretrained weights from torchvision",
+        )
+        # backbone_aspect_ratios: Optional[List[Tuple[int, ...]]] = None,
+        # :param backbone_aspect_ratios: aspect ratios for each backbone feature map
+        parser.add_argument(
+            "--backbone_out_channels",
+            nargs="+",
+            type=int,
+            default=None,
+            help="Output channels of backbone (None for default)",
+        )
+        parser.add_argument(
+            "--backbone_feature_maps",
+            nargs="+",
+            type=int,
+            default=None,
+            help="Number of feature maps in each backbone output (None for default)",
+        )
+        parser.add_argument(
+            "--backbone_min_sizes",
+            nargs="+",
+            type=float,
+            default=None,
+            help="Maximal sizes of objects in each feature map (None for default)",
+        )
+        parser.add_argument(
+            "--backbone_max_sizes",
+            nargs="+",
+            type=float,
+            default=None,
+            help="Minimal sizes of objects in each feature map (None for default)",
+        )
+        parser.add_argument(
+            "--backbone_strides",
+            nargs="+",
+            type=int,
+            default=None,
+            help="Backbone strides used in each feature map (None for default)",
+        )
+        parser.add_argument(
+            "--backbone_aspect_ratios",
+            nargs="+",
+            type=pair,
+            default=None,
+            help="Aspect ratios for each backbone feature map (None for default)",
         )
         parser.add_argument(
             "--predictor_name",
