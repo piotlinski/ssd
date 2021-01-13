@@ -1,6 +1,6 @@
 """Argument parsing utils."""
 from argparse import ArgumentTypeError
-from typing import Union
+from typing import Tuple, Union
 
 
 def str2bool(value: Union[str, bool]) -> bool:
@@ -13,3 +13,9 @@ def str2bool(value: Union[str, bool]) -> bool:
         return False
     else:
         raise ArgumentTypeError("Boolean value expected.")
+
+
+def comma_separated(value: str) -> Tuple[int, ...]:
+    """Convert comma-separated values to tuple."""
+    converted = [int(v) for v in value.split(",")]
+    return tuple(converted)
