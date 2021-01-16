@@ -17,5 +17,5 @@ def str2bool(value: Union[str, bool]) -> bool:
 
 def comma_separated(value: str) -> Tuple[int, ...]:
     """Convert comma-separated values to tuple."""
-    converted = [int(v) for v in value.split(",")]
+    converted = [int(v) for v in value.split(",") if v]
     return tuple(converted)
