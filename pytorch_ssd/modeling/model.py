@@ -1,17 +1,16 @@
 """SSD model."""
 import logging
 from argparse import ArgumentParser
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as functional
 import wandb
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data.dataloader import DataLoader
 from torchvision.ops.boxes import batched_nms
 
-from pytorch_ssd.args import comma_separated, str2bool
+from pytorch_ssd.args import comma_separated, eq2kwargs, str2bool
 from pytorch_ssd.data.bboxes import (
     center_bbox_to_corner_bbox,
     convert_locations_to_boxes,
@@ -30,6 +29,16 @@ from pytorch_ssd.modeling.metrics import MeanAveragePrecision
 from pytorch_ssd.modeling.visualize import denormalize, get_boxes
 
 logger = logging.getLogger(__name__)
+optimizers = {"Adam": torch.optim.Adam, "SGD": torch.optim.SGD}
+lr_schedulers = {
+    "StepLR": torch.optim.lr_scheduler.StepLR,
+    "MultiStepLR": torch.optim.lr_scheduler.MultiStepLR,
+    "ExponentialLR": torch.optim.lr_scheduler.ExponentialLR,
+    "CosineAnnealingLR": torch.optim.lr_scheduler.CosineAnnealingLR,
+    "ReduceLROnPlateau": torch.optim.lr_scheduler.ReduceLROnPlateau,
+    "CyclicLR": torch.optim.lr_scheduler.CyclicLR,
+    "CosineAnnealingWarmRestarts": torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
+}
 
 
 class SSD(pl.LightningModule):
@@ -39,10 +48,11 @@ class SSD(pl.LightningModule):
         self,
         dataset_name: str,
         data_dir: str,
+        optimizer: str = "Adam",
         learning_rate: float = 1e-3,
-        momentum: float = 0.9,
-        warm_restart_epochs: float = 1 / 3,
-        warm_restart_len_mult: int = 2,
+        optimizer_kwargs: Optional[List[Tuple[str, Any]]] = None,
+        lr_scheduler: str = "",
+        lr_scheduler_kwargs: Optional[List[Tuple[str, Any]]] = None,
         auto_lr_find: bool = False,
         batch_size: int = 32,
         num_workers: int = 8,
@@ -75,9 +85,11 @@ class SSD(pl.LightningModule):
         """
         :param dataset_name: used dataset name
         :param data_dir: dataset data directory path
+        :param optimizer: optimizer name
         :param learning_rate: learning rate
-        :param momentum: SGD momentum
-        :param lr_reduce_patience: learning rate reduce on plateau patience (epochs)
+        :param optimizer_kwargs: optimizer argumnets dictionary
+        :param lr_scheduler: LR scheduler name
+        :param lr_scheduler_kwargs: LR scheduler arguments dictionary
         :param auto_lr_find: perform auto lr finding
         :param batch_size: mini-batch size for training
         :param num_workers: number of workers for dataloader
@@ -160,8 +172,15 @@ class SSD(pl.LightningModule):
         self.max_per_image = max_per_image
         self.negative_positive_ratio = negative_positive_ratio
 
+        self.optimizer = optimizers[optimizer]
+        if optimizer_kwargs is None:
+            optimizer_kwargs = []
+        self.optimizer_kwargs = dict(optimizer_kwargs)
         self.lr = learning_rate
-        self.momentum = momentum
+        self.lr_scheduler = lr_schedulers.get(lr_scheduler)
+        if lr_scheduler_kwargs is None:
+            lr_scheduler_kwargs = []
+        self.lr_scheduler_kwargs = dict(lr_scheduler_kwargs)
         self.auto_lr_find = auto_lr_find
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -174,9 +193,6 @@ class SSD(pl.LightningModule):
         self.visualize = visualize
 
         self.map = MeanAveragePrecision(iou_threshold=self.map_iou_threshold)
-
-        self.warm_restart_epochs = warm_restart_epochs
-        self.warm_restart_len_mult = warm_restart_len_mult
 
         self.save_hyperparameters()
 
@@ -194,28 +210,39 @@ class SSD(pl.LightningModule):
             "--data_dir", type=str, default="data", help="Dataset files directory"
         )
         parser.add_argument(
+            "--optimizer",
+            type=str,
+            default="Adam",
+            help=f"Used optimizer. Available: {list(optimizers.keys())}",
+        )
+        parser.add_argument(
             "--learning_rate",
             type=float,
             default=1e-3,
             help="Learning rate used for training the model",
         )
         parser.add_argument(
-            "--momentum",
-            type=float,
-            default=0.9,
-            help="Momentum used for training the model with SGD",
+            "--optimizer_kwargs",
+            type=eq2kwargs,
+            default=[],
+            nargs="*",
+            help="Optimizer kwargs in the form of key=value separated by spaces",
         )
         parser.add_argument(
-            "--warm_restart_epochs",
-            type=float,
-            default=1 / 3,
-            help="Number of epochs after which a warm restart is performed",
+            "--lr_scheduler",
+            type=str,
+            default="None",
+            help=(
+                "Used LR scheduler. "
+                f"Available: {list(lr_schedulers.keys())}; default: None"
+            ),
         )
         parser.add_argument(
-            "--warm_restart_len_mult",
-            type=int,
-            default=2,
-            help="Coef to multiply warm restart epochs after each restart",
+            "--lr_scheduler_kwargs",
+            type=eq2kwargs,
+            default=[],
+            nargs="*",
+            help="LR scheduler kwargs in the form of key=value separated by spaces",
         )
         parser.add_argument(
             "--batch_size",
@@ -592,25 +619,19 @@ class SSD(pl.LightningModule):
 
     def configure_optimizers(self):
         """Configure training optimizer."""
-        warm_restart_steps = int(
-            len(self.train_dataloader()) * self.warm_restart_epochs
+        optimizer = self.optimizer(
+            self.parameters(), lr=self.lr, **self.optimizer_kwargs
         )
-
-        optimizer = torch.optim.SGD(
-            self.parameters(), lr=self.lr, momentum=self.momentum
-        )
-        lr_scheduler = CosineAnnealingWarmRestarts(
-            optimizer=optimizer,
-            T_0=warm_restart_steps,
-            T_mult=self.warm_restart_len_mult,
-        )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
+        configuration = {"optimizer": optimizer}
+        if self.lr_scheduler is not None:
+            lr_scheduler = self.lr_scheduler(
+                optimizer=optimizer, **self.lr_scheduler_kwargs
+            )
+            configuration["lr_scheduler"] = {
                 "scheduler": lr_scheduler,
                 "interval": "step",
-            },
-        }
+            }
+        return configuration
 
     def train_dataloader(self) -> DataLoader:
         """Prepare train dataloader."""

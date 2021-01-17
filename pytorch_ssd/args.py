@@ -1,6 +1,7 @@
 """Argument parsing utils."""
 from argparse import ArgumentTypeError
-from typing import Tuple, Union
+from ast import literal_eval
+from typing import Any, Tuple, Union
 
 
 def str2bool(value: Union[str, bool]) -> bool:
@@ -19,3 +20,9 @@ def comma_separated(value: str) -> Tuple[int, ...]:
     """Convert comma-separated values to tuple."""
     converted = [int(v) for v in value.split(",") if v]
     return tuple(converted)
+
+
+def eq2kwargs(kwargs_str) -> Tuple[str, Any]:
+    """Parse a key-value pair separated by '='."""
+    key, value = kwargs_str.split("=")
+    return key.strip(), literal_eval(value.strip())
