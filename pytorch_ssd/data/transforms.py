@@ -63,6 +63,8 @@ class SSDTargetTransform:
             boxes_mask = torch.logical_and(boxes_mask_w, boxes_mask_h)
             gt_boxes = gt_boxes[boxes_mask.unsqueeze(-1).expand_as(gt_boxes)]
             gt_labels = gt_labels[boxes_mask]
+        if gt_labels.numel() == 0:
+            return torch.tensor([]), torch.tensor([])
         boxes, labels = assign_priors(
             gt_boxes,
             gt_labels,
