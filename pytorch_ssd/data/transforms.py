@@ -166,7 +166,12 @@ class TrainDataTransform(DataTransform):
         :param augment_colors: augment image colors
         :param strong_crop: crop input image to smaller size regardless of boxes
         """
-        transforms = []
+        transforms = [
+            HorizontalFlip(p=flip * 0.5),
+            RandomSizedBBoxSafeCrop(
+                int(2 * image_size[1]), int(2 * image_size[0]), erosion_rate=0.2
+            ),
+        ]
         if strong_crop:
             transforms.append(RandomCrop(image_size[1], image_size[0]))
         if augment_colors:
@@ -178,13 +183,6 @@ class TrainDataTransform(DataTransform):
                 RandomBrightnessContrast(brightness_limit=0.125, contrast_limit=0.5),
             ]
             transforms.extend(color_transforms)
-        shape_transforms = [
-            HorizontalFlip(p=flip * 0.5),
-            RandomSizedBBoxSafeCrop(
-                int(1.5 * image_size[1]), int(1.5 * image_size[0]), erosion_rate=0.2
-            ),
-        ]
-        transforms.extend(shape_transforms)
         super().__init__(
             image_size=image_size,
             pixel_mean=pixel_mean,
