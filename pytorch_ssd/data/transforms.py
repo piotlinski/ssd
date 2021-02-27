@@ -67,7 +67,7 @@ class SSDTargetTransform:
         if self.drop:
             boxes_mask_w = boxes[:, 2] > 0.04 * self.image_shape[1]
             boxes_mask_h = boxes[:, 3] > 0.04 * self.image_shape[0]
-            boxes_mask = torch.logical_and(boxes_mask_w, boxes_mask_h)
+            boxes_mask = torch.logical_and(boxes_mask_w, boxes_mask_h).unsqueeze(-1)
             boxes = boxes[boxes_mask.expand_as(boxes)]
         locations = convert_boxes_to_locations(
             boxes,
