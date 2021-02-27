@@ -31,13 +31,22 @@ from pytorch_ssd.modeling.visualize import denormalize, get_boxes
 logger = logging.getLogger(__name__)
 optimizers = {"Adam": torch.optim.Adam, "SGD": torch.optim.SGD}
 lr_schedulers = {
-    "StepLR": torch.optim.lr_scheduler.StepLR,
-    "MultiStepLR": torch.optim.lr_scheduler.MultiStepLR,
-    "ExponentialLR": torch.optim.lr_scheduler.ExponentialLR,
-    "CosineAnnealingLR": torch.optim.lr_scheduler.CosineAnnealingLR,
-    "ReduceLROnPlateau": torch.optim.lr_scheduler.ReduceLROnPlateau,
-    "CyclicLR": torch.optim.lr_scheduler.CyclicLR,
-    "CosineAnnealingWarmRestarts": torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
+    # name: optimizer, interval, var to monitor
+    "StepLR": (torch.optim.lr_scheduler.StepLR, "step", None),
+    "MultiStepLR": (torch.optim.lr_scheduler.MultiStepLR, "step", None),
+    "ExponentialLR": (torch.optim.lr_scheduler.ExponentialLR, "epoch", None),
+    "CosineAnnealingLR": (torch.optim.lr_scheduler.CosineAnnealingLR, "step", None),
+    "ReduceLROnPlateau": (
+        torch.optim.lr_scheduler.ReduceLROnPlateau,
+        "epoch",
+        "val_loss",
+    ),
+    "CyclicLR": (torch.optim.lr_scheduler.CyclicLR, "step", None),
+    "CosineAnnealingWarmRestarts": (
+        torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
+        "step",
+        None,
+    ),
 }
 
 
@@ -60,6 +69,7 @@ class SSD(pl.LightningModule):
         n_classes: Optional[int] = None,
         flip_train: bool = False,
         augment_colors_train: bool = False,
+        strong_crop: bool = False,
         backbone_name: str = "VGG300",
         use_pretrained_backbone: bool = False,
         backbone_out_channels: Optional[List[int]] = None,
@@ -73,6 +83,7 @@ class SSD(pl.LightningModule):
         center_variance: float = 0.1,
         size_variance: float = 0.2,
         iou_threshold: float = 0.5,
+        drop_small_boxes: bool = True,
         confidence_threshold: float = 0.8,
         nms_threshold: float = 0.45,
         max_per_image: int = 100,
@@ -98,6 +109,7 @@ class SSD(pl.LightningModule):
             defaults to number of classes in the dataset
         :param flip_train: perform random flipping on train images
         :param augment_colors_train: perform random colors augmentation on train images
+        :param strong_crop: crop input images to input shape before augmentation
         :param backbone_name: used backbone name
         :param use_pretrained_backbone: download pretrained weights for backbone
         :param backbone_out_channels: output channels of backbone (None for default)
@@ -111,6 +123,7 @@ class SSD(pl.LightningModule):
         :param center_variance: SSD center variance
         :param size_variance: SSD size variance
         :param iou_threshold: IOU threshold for anchors
+        :param drop_small_boxes: drop small bounding boxes when training
         :param confidence_threshold: min prediction confidence to use as detection
         :param nms_threshold: non-max suppression IOU threshold
         :param max_per_image: max number of detections per image
@@ -163,6 +176,7 @@ class SSD(pl.LightningModule):
             center_variance=center_variance,
             size_variance=size_variance,
             iou_threshold=iou_threshold,
+            drop_small_boxes=drop_small_boxes,
         )
         self.image_size = image_size
         self.center_variance = center_variance
@@ -177,7 +191,12 @@ class SSD(pl.LightningModule):
             optimizer_kwargs = []
         self.optimizer_kwargs = dict(optimizer_kwargs)
         self.lr = learning_rate
-        self.lr_scheduler = lr_schedulers.get(lr_scheduler)
+        self.lr_scheduler: Optional[object]
+        self.lr_freq: Optional[str]
+        self.lr_metric: Optional[str]
+        self.lr_scheduler, self.lr_freq, self.lr_metric = lr_schedulers.get(
+            lr_scheduler, (None, None, None)
+        )
         if lr_scheduler_kwargs is None:
             lr_scheduler_kwargs = []
         self.lr_scheduler_kwargs = dict(lr_scheduler_kwargs)
@@ -188,6 +207,7 @@ class SSD(pl.LightningModule):
         self.n_classes = n_classes
         self.flip_train = flip_train
         self.augment_colors_train = augment_colors_train
+        self.strong_crop = strong_crop
         self.calculate_map = calculate_map
         self.map_iou_threshold = map_iou_threshold
         self.visualize = visualize
@@ -350,6 +370,14 @@ class SSD(pl.LightningModule):
             "--iou_threshold", type=float, default=0.5, help="IOU threshold for anchors"
         )
         parser.add_argument(
+            "--drop_small_boxes",
+            type=str2bool,
+            nargs="?",
+            const=True,
+            default=True,
+            help="Drop small bounding boxes when training",
+        )
+        parser.add_argument(
             "--confidence_threshold",
             type=float,
             default=0.8,
@@ -388,6 +416,14 @@ class SSD(pl.LightningModule):
             const=True,
             default=False,
             help="Perform random colors augmentation during training",
+        )
+        parser.add_argument(
+            "--strong_crop",
+            type=str2bool,
+            nargs="?",
+            const=True,
+            default=False,
+            help="Crop input images to input shape before augmentation",
         )
         parser.add_argument(
             "--calculate_map",
@@ -629,8 +665,10 @@ class SSD(pl.LightningModule):
             )
             configuration["lr_scheduler"] = {
                 "scheduler": lr_scheduler,
-                "interval": "step",
+                "interval": self.lr_freq,
             }
+            if self.lr_metric is not None:
+                configuration["lr_scheduler"]["monitor"] = self.lr_metric
         return configuration
 
     def train_dataloader(self) -> DataLoader:
@@ -641,6 +679,7 @@ class SSD(pl.LightningModule):
             pixel_std=self.backbone.PIXEL_STDS,
             flip=self.flip_train,
             augment_colors=self.augment_colors_train,
+            strong_crop=self.strong_crop,
         )
         dataset = self.dataset(
             self.data_dir,
