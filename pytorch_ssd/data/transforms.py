@@ -57,6 +57,8 @@ class SSDTargetTransform:
             gt_boxes = torch.from_numpy(gt_boxes)
         if type(gt_labels) is np.ndarray:
             gt_labels = torch.from_numpy(gt_labels)
+        if gt_labels.numel() == 0:
+            return torch.tensor([]), torch.tensor([])
         if self.drop:
             boxes_mask_w = gt_boxes[:, 2] - gt_boxes[:, 0] > 0.04
             boxes_mask_h = gt_boxes[:, 3] - gt_boxes[:, 1] > 0.04
