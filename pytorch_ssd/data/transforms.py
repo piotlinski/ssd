@@ -164,7 +164,9 @@ class TrainDataTransform(DataTransform):
         """
         transforms = []
         if strong_crop:
-            transforms.append(RandomCrop(2 * image_size[0], 2 * image_size[1]))
+            transforms.append(
+                RandomCrop(int(1.5 * image_size[1]), int(1.5 * image_size[0]))
+            )
         if augment_colors:
             # noinspection PyTypeChecker
             color_transforms = [

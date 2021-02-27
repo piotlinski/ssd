@@ -100,7 +100,7 @@ class SSD(pl.LightningModule):
             defaults to number of classes in the dataset
         :param flip_train: perform random flipping on train images
         :param augment_colors_train: perform random colors augmentation on train images
-        :param strong_crop: crop input images to twice input shape before augmentation
+        :param strong_crop: crop input images to 1.5x input shape before augmentation
         :param backbone_name: used backbone name
         :param use_pretrained_backbone: download pretrained weights for backbone
         :param backbone_out_channels: output channels of backbone (None for default)
@@ -409,7 +409,7 @@ class SSD(pl.LightningModule):
             nargs="?",
             const=True,
             default=False,
-            help="Crop input images to twice input shape before augmentation",
+            help="Crop input images to 1.5x input shape before augmentation",
         )
         parser.add_argument(
             "--calculate_map",
