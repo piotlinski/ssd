@@ -57,6 +57,12 @@ class SSDTargetTransform:
             gt_boxes = torch.from_numpy(gt_boxes)
         if type(gt_labels) is np.ndarray:
             gt_labels = torch.from_numpy(gt_labels)
+        if self.drop:
+            boxes_mask_w = gt_boxes[:, 2] - gt_boxes[:, 0] > 0.04 * self.image_shape[1]
+            boxes_mask_h = gt_boxes[:, 3] - gt_boxes[:, 1] > 0.04 * self.image_shape[0]
+            boxes_mask = torch.logical_and(boxes_mask_w, boxes_mask_h)
+            gt_boxes = gt_boxes[boxes_mask.unsqueeze(-1).expand_as(gt_boxes)]
+            gt_labels = gt_labels[boxes_mask]
         boxes, labels = assign_priors(
             gt_boxes,
             gt_labels,
@@ -64,11 +70,6 @@ class SSDTargetTransform:
             iou_threshold=self.iou_threshold,
         )
         boxes = corner_bbox_to_center_bbox(boxes)
-        if self.drop:
-            boxes_mask_w = boxes[:, 2] > 0.04 * self.image_shape[1]
-            boxes_mask_h = boxes[:, 3] > 0.04 * self.image_shape[0]
-            boxes_mask = torch.logical_and(boxes_mask_w, boxes_mask_h).unsqueeze(-1)
-            boxes = boxes[boxes_mask.expand_as(boxes)]
         locations = convert_boxes_to_locations(
             boxes,
             self.center_form_priors,
