@@ -66,7 +66,7 @@ class SSDTargetTransform:
         boxes = corner_bbox_to_center_bbox(boxes)
         if self.drop:
             boxes_mask_w = boxes[:, 2] > 0.04 * self.image_shape[1]
-            boxes_mask_h = boxes_mask_w[:, 3] > 0.04 * self.image_shape[0]
+            boxes_mask_h = boxes[:, 3] > 0.04 * self.image_shape[0]
             boxes_mask = boxes_mask_w and boxes_mask_h
             boxes = boxes[boxes_mask.expand_as(boxes)]
         locations = convert_boxes_to_locations(
