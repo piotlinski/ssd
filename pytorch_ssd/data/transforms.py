@@ -1,6 +1,7 @@
 """Data transforms."""
 from typing import List, Optional, Tuple, Union
 
+import cv2
 import numpy as np
 import torch
 from albumentations import (
@@ -14,6 +15,7 @@ from albumentations import (
     RandomCrop,
     RandomSizedBBoxSafeCrop,
     Resize,
+    get_random_crop_coords,
     normalize_bboxes,
 )
 from albumentations.pytorch import ToTensorV2 as ToTensor
@@ -166,9 +168,7 @@ class TrainDataTransform(DataTransform):
         """
         transforms = []
         if strong_crop:
-            transforms.append(
-                RandomCrop(int(1.5 * image_size[1]), int(1.5 * image_size[0]))
-            )
+            transforms.append(RandomCrop(image_size[1], image_size[0]))
         if augment_colors:
             # noinspection PyTypeChecker
             color_transforms = [
@@ -180,7 +180,9 @@ class TrainDataTransform(DataTransform):
             transforms.extend(color_transforms)
         shape_transforms = [
             HorizontalFlip(p=flip * 0.5),
-            RandomSizedBBoxSafeCrop(512, 512, erosion_rate=0.2),
+            RandomSizedBBoxSafeCrop(
+                int(1.5 * image_size[1]), int(1.5 * image_size[0]), erosion_rate=0.2
+            ),
         ]
         transforms.extend(shape_transforms)
         super().__init__(
