@@ -11,6 +11,7 @@ from albumentations import (
     HueSaturationValue,
     Normalize,
     RandomBrightnessContrast,
+    RandomCrop,
     RandomSizedBBoxSafeCrop,
     Resize,
     normalize_bboxes,
@@ -36,6 +37,7 @@ class SSDTargetTransform:
         center_variance: float,
         size_variance: float,
         iou_threshold: float,
+        drop_small_boxes: bool = False,
     ):
         self.center_form_priors = anchors
         self.corner_form_priors = center_bbox_to_corner_bbox(self.center_form_priors)
@@ -44,6 +46,7 @@ class SSDTargetTransform:
         self.iou_threshold = iou_threshold
         self.image_shape = image_size
         self.single_class = n_classes == 2
+        self.drop = drop_small_boxes
 
     def __call__(
         self,
@@ -61,6 +64,11 @@ class SSDTargetTransform:
             iou_threshold=self.iou_threshold,
         )
         boxes = corner_bbox_to_center_bbox(boxes)
+        if self.drop:
+            boxes_mask_w = boxes[:, 2] > 0.04 * self.image_shape[1]
+            boxes_mask_h = boxes_mask_w[:, 3] > 0.04 * self.image_shape[0]
+            boxes_mask = boxes_mask_w and boxes_mask_h
+            boxes = boxes[boxes_mask.expand_as(boxes)]
         locations = convert_boxes_to_locations(
             boxes,
             self.center_form_priors,
@@ -139,6 +147,7 @@ class TrainDataTransform(DataTransform):
         pixel_std: List[float],
         flip: bool = False,
         augment_colors: bool = False,
+        strong_crop: bool = False,
     ):
         """
         :param image_size: model input data shape (eg. (300, 300))
@@ -146,8 +155,11 @@ class TrainDataTransform(DataTransform):
         :param pixel_std: data pixel std per channel
         :param flip: randomly flip image L/R
         :param augment_colors: augment image colors
+        :param strong_crop: crop input image to smaller size regardless of boxes
         """
         transforms = []
+        if strong_crop:
+            transforms.append(RandomCrop(2 * image_size[0], 2 * image_size[1]))
         if augment_colors:
             # noinspection PyTypeChecker
             color_transforms = [
@@ -159,7 +171,7 @@ class TrainDataTransform(DataTransform):
             transforms.extend(color_transforms)
         shape_transforms = [
             HorizontalFlip(p=flip * 0.5),
-            RandomSizedBBoxSafeCrop(512, 512),
+            RandomSizedBBoxSafeCrop(512, 512, erosion_rate=0.2),
         ]
         transforms.extend(shape_transforms)
         super().__init__(

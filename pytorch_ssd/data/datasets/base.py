@@ -47,6 +47,11 @@ class BaseDataset(data.Dataset, ABC):
             image, boxes, labels = self.data_transform(image, boxes, labels)
         if self.target_transform is not None:
             boxes, labels = self.target_transform(boxes, labels)
+        if boxes.numel() == 0:
+            item += 1
+            if item >= len(self):
+                item = 0
+            return self.__getitem__(item)
         return image, boxes, labels
 
     def _get_image(self, item: int) -> torch.Tensor:
