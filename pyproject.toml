@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pytorch-ssd"
-version = "1.7.0"
+version = "1.8.0"
 description = "Single Shot Multi-Box Detector implementation in PyTorch"
 authors = ["PiotrJZielinski <piotrekzie100@gmail.com>"]
 
