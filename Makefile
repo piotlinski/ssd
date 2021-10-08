@@ -1,5 +1,6 @@
 DOCKER_RUN := docker run --rm -v $(shell pwd):/app
 LOCAL_USER := -e LOCAL_USER_ID=`id -u $(USER)` -e LOCAL_GROUP_ID=`id -g $(USER)`
+DOCKER_ARGS ?=
 tag = piotrekzie100/dev:ssd
 
 help:  ## Show this help
@@ -25,8 +26,8 @@ test:  ## Run tests
 gpu ?= 3
 ssd_args ?= ssd --default_root_dir runs
 run:  ## Run model
-	$(DOCKER_RUN) $(LOCAL_USER) --gpus '"device=$(gpu)"' --shm-size 24G $(tag) $(ssd_args)
+	$(DOCKER_RUN) $(LOCAL_USER) $(DOCKER_ARGS) --gpus '"device=$(gpu)"' --shm-size 24G $(tag) $(ssd_args)
 
 cmd ?= python3 train.py $(ssd_args)
 run.basic:  ## Run model using basic docker
-	$(DOCKER_RUN) $(LOCAL_USER) --gpus '"device=$(gpu)"' --shm-size 24G --cpus 16 piotrekzie100/dev:basic $(cmd)
+	$(DOCKER_RUN) $(LOCAL_USER) $(DOCKER_ARGS) --gpus '"device=$(gpu)"' --shm-size 24G --cpus 16 piotrekzie100/dev:basic $(cmd)
