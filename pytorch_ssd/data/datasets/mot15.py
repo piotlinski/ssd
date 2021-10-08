@@ -53,16 +53,18 @@ class MOT15(BaseDataset):
         return boxes, labels
 
     @staticmethod
-    def _parse_mot15_line(line: str) -> Tuple[int, int, float, float, float, float]:
+    def _parse_mot15_line(
+        line: str, width: float, height: float
+    ) -> Tuple[int, int, float, float, float, float]:
         """Create X1Y1X2Y2 annotation from MOT15 line."""
         frame_id, obj_id, x1, y1, w, h, *_ = line.split(",")
         return (
             int(frame_id),
             int(obj_id),
-            float(x1),
-            float(y1),
-            float(x1) + float(w),
-            float(y1) + float(h),
+            max(float(x1), 0),
+            max(float(y1), 0),
+            min(float(x1) + float(w), width),
+            min(float(y1) + float(h), height),
         )
 
     @staticmethod
@@ -91,11 +93,11 @@ class MOT15(BaseDataset):
 
         with file.open("r") as fp:
             for line in fp:
-                frame_id, _, x1, y1, x2, y2 = self._parse_mot15_line(line)
+                frame_id, _, x1, y1, x2, y2 = self._parse_mot15_line(
+                    line, width=width, height=height
+                )
                 filename = file.parents[1] / directory / f"{frame_id:06}{extension}"
                 annotations[filename].append([x1, y1, x2, y2])
-                if x1 < 0 or y1 < 0 or x2 >= width or y2 >= height:
-                    print(x1, y1, x2, y2)
         return annotations
 
     def _prepare_annotations(self):
