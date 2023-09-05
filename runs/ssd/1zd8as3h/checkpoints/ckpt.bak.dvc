@@ -1,0 +1,5 @@
+outs:
+- md5: 9b7786dc299b51dfe63e268b7f82d329
+  size: 348002960
+  hash: md5
+  path: ckpt.bak

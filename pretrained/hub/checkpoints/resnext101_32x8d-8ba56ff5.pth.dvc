@@ -1,0 +1,5 @@
+outs:
+- md5: 4454a42689454b94296e378762f2333f
+  size: 356082095
+  hash: md5
+  path: resnext101_32x8d-8ba56ff5.pth
