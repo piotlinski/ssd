@@ -1,2 +1,0 @@
-#!/bin/bash
-find . -mindepth 2 -maxdepth 3 -type d -name "*$1" -print0 -exec rm -rI {} \;
